@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.db import get_connection, init_db, row_to_dict, rows_to_dicts
+from app.models import (
+    ImportResult,
+    NoteCreate,
+    PersonalProgressUpdate,
+    PersonalQARequest,
+    QARequest,
+    QAResponse,
+)
+from app.pipelines.importer import import_sample
+from app.services.notes import approve_note, create_note, pending_notes, reject_note
+from app.services.personal import (
+    create_space_from_markdown_bytes,
+    create_space_from_sample,
+    get_personal_point,
+    get_space,
+    list_spaces,
+    update_progress,
+)
+from app.services.qa import answer_personal_question, answer_question
+
+
+app = FastAPI(title="AI 交互式数学学习平台 Demo", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# TestClient 在某些版本中不进入 lifespan context 时也要可用；真实 uvicorn
+# 启动时下面的 startup 事件会再执行一次，SQLite 的 CREATE IF NOT EXISTS 是幂等的。
+init_db()
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"ok": True, "service": "learning_platform"}
+
+
+@app.get("/api/stats")
+def stats() -> dict:
+    with get_connection() as conn:
+        return {
+            "courses": conn.execute("SELECT COUNT(*) AS count FROM courses").fetchone()["count"],
+            "knowledge_points": conn.execute("SELECT COUNT(*) AS count FROM knowledge_points").fetchone()["count"],
+            "content_units": conn.execute("SELECT COUNT(*) AS count FROM content_units").fetchone()["count"],
+            "pending_notes": conn.execute("SELECT COUNT(*) AS count FROM notes WHERE status = 'pending'").fetchone()["count"],
+            "approved_notes": conn.execute("SELECT COUNT(*) AS count FROM notes WHERE status = 'approved'").fetchone()["count"],
+            "qa_logs": conn.execute("SELECT COUNT(*) AS count FROM qa_logs").fetchone()["count"],
+            "personal_spaces": conn.execute("SELECT COUNT(*) AS count FROM personal_spaces").fetchone()["count"],
+        }
+
+
+@app.post("/api/import/sample", response_model=ImportResult)
+def import_sample_api() -> ImportResult:
+    try:
+        return import_sample()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/courses")
+def courses() -> list[dict]:
+    with get_connection() as conn:
+        return rows_to_dicts(conn.execute("SELECT * FROM courses ORDER BY id").fetchall())
+
+
+@app.get("/api/knowledge-points")
+def knowledge_points() -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                kp.*,
+                COUNT(DISTINCT cu.id) AS content_count,
+                COUNT(DISTINCT n.id) AS approved_note_count,
+                c.title AS chapter_title
+            FROM knowledge_points kp
+            JOIN chapters c ON c.id = kp.chapter_id
+            LEFT JOIN content_units cu ON cu.knowledge_point_id = kp.id
+            LEFT JOIN notes n ON n.knowledge_point_id = kp.id AND n.status = 'approved'
+            GROUP BY kp.id
+            ORDER BY kp.order_index
+            """
+        ).fetchall()
+    return rows_to_dicts(rows)
+
+
+@app.get("/api/knowledge-points/{knowledge_point_id}")
+def knowledge_point_detail(knowledge_point_id: int) -> dict:
+    with get_connection() as conn:
+        point = row_to_dict(
+            conn.execute("SELECT * FROM knowledge_points WHERE id = ?", (knowledge_point_id,)).fetchone()
+        )
+        if not point:
+            raise HTTPException(status_code=404, detail="知识点不存在")
+        point["units"] = rows_to_dicts(
+            conn.execute(
+                "SELECT * FROM content_units WHERE knowledge_point_id = ? ORDER BY order_index",
+                (knowledge_point_id,),
+            ).fetchall()
+        )
+        point["notes"] = rows_to_dicts(
+            conn.execute(
+                "SELECT * FROM notes WHERE knowledge_point_id = ? AND status = 'approved' ORDER BY reviewed_at DESC",
+                (knowledge_point_id,),
+            ).fetchall()
+        )
+    return point
+
+
+@app.post("/api/notes")
+def create_note_api(payload: NoteCreate) -> dict:
+    return create_note(payload)
+
+
+@app.get("/api/notes/pending")
+def pending_notes_api() -> list[dict]:
+    return pending_notes()
+
+
+@app.post("/api/notes/{note_id}/approve")
+def approve_note_api(note_id: int) -> dict:
+    note = approve_note(note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    return note
+
+
+@app.post("/api/notes/{note_id}/reject")
+def reject_note_api(note_id: int) -> dict:
+    note = reject_note(note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    return note
+
+
+@app.post("/api/qa", response_model=QAResponse)
+def qa_api(payload: QARequest) -> dict:
+    try:
+        return answer_question(payload.knowledge_point_id, payload.question)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/personal-spaces/upload-markdown")
+async def upload_personal_markdown(file: UploadFile = File(...)) -> dict:
+    data = await file.read()
+    try:
+        return create_space_from_markdown_bytes(file.filename or "upload.md", data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/personal-spaces/from-sample")
+def personal_space_from_sample_api() -> dict:
+    try:
+        return create_space_from_sample()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/personal-spaces")
+def personal_spaces_api() -> list[dict]:
+    return list_spaces()
+
+
+@app.get("/api/personal-spaces/{space_id}")
+def personal_space_api(space_id: int) -> dict:
+    space = get_space(space_id)
+    if not space:
+        raise HTTPException(status_code=404, detail="个人学习空间不存在")
+    return space
+
+
+@app.get("/api/personal-spaces/{space_id}/knowledge-points/{point_id}")
+def personal_knowledge_point_api(space_id: int, point_id: int) -> dict:
+    point = get_personal_point(space_id, point_id)
+    if not point:
+        raise HTTPException(status_code=404, detail="个人知识点不存在")
+    return point
+
+
+@app.post("/api/personal-spaces/{space_id}/knowledge-points/{point_id}/progress")
+def personal_progress_api(space_id: int, point_id: int, payload: PersonalProgressUpdate) -> dict:
+    try:
+        point = update_progress(space_id, point_id, payload.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not point:
+        raise HTTPException(status_code=404, detail="个人知识点不存在")
+    return point
+
+
+@app.post("/api/personal-spaces/{space_id}/qa", response_model=QAResponse)
+def personal_qa_api(space_id: int, payload: PersonalQARequest) -> dict:
+    try:
+        return answer_personal_question(space_id, payload.personal_knowledge_point_id, payload.question)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

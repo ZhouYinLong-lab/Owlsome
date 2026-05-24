@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinerU WebUI — {% block title %}Dashboard{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+    <!-- Nav -->
+    <nav class="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="text-lg font-bold text-emerald-400 tracking-tight hover:text-emerald-300 transition-colors">
+                        MinerU WebUI
+                    </a>
+                </div>
+                <div class="flex items-center gap-1">
+                    <a href="/" class="px-3 py-2 text-sm rounded-lg {% if request.url.path == '/' %}bg-gray-800 text-white{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} transition-colors">Dashboard</a>
+                    <a href="/tasks/new" class="px-3 py-2 text-sm rounded-lg {% if request.url.path == '/tasks/new' %}bg-gray-800 text-white{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} transition-colors">New Task</a>
+                    <a href="/history" class="px-3 py-2 text-sm rounded-lg {% if '/history' in request.url.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} transition-colors">History</a>
+                    <a href="/settings" class="px-3 py-2 text-sm rounded-lg {% if request.url.path == '/settings' %}bg-gray-800 text-white{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} transition-colors">Settings</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script>
+    function showToast(msg, type='info') {
+        const colors = { info: 'bg-blue-600', success: 'bg-emerald-600', error: 'bg-red-600', warn: 'bg-amber-600' };
+        const el = document.createElement('div');
+        el.className = `${colors[type] || colors.info} text-white px-4 py-3 rounded-lg shadow-lg text-sm animate-slide-up`;
+        el.textContent = msg;
+        document.getElementById('toast-container').appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 4000);
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function timeAgo(isoStr) {
+        if (!isoStr) return '';
+        const diff = Date.now() - new Date(isoStr).getTime();
+        const secs = Math.floor(diff / 1000);
+        if (secs < 60) return secs + 's ago';
+        const mins = Math.floor(secs / 60);
+        if (mins < 60) return mins + 'm ago';
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return hours + 'h ago';
+        return Math.floor(hours / 24) + 'd ago';
+    }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

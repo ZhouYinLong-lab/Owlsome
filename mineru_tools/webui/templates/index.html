@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold">Dashboard</h1>
+    <p class="text-gray-500 text-sm mt-1">MinerU document parsing task overview</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    {% set labels = {'total': ('Total', 'text-blue-400'), 'pending': ('Pending', 'text-amber-400'), 'running': ('Running', 'text-cyan-400'), 'done': ('Done', 'text-emerald-400'), 'failed': ('Failed', 'text-red-400')} %}
+    {% for key, (label, color) in labels.items() %}
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">{{ label }}</div>
+        <div class="text-3xl font-bold mt-1 {{ color }}">{{ stats.get(key, 0) }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Quick Actions -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <a href="/tasks/new" class="bg-gray-900 rounded-xl border border-gray-800 p-5 hover:border-emerald-500/50 transition-colors group">
+        <div class="text-lg font-semibold text-emerald-400 group-hover:text-emerald-300">URL Parse</div>
+        <div class="text-sm text-gray-500 mt-1">Submit a file URL for precision or agent parsing</div>
+    </a>
+    <a href="/tasks/new?mode=file" class="bg-gray-900 rounded-xl border border-gray-800 p-5 hover:border-cyan-500/50 transition-colors group">
+        <div class="text-lg font-semibold text-cyan-400 group-hover:text-cyan-300">File Upload</div>
+        <div class="text-sm text-gray-500 mt-1">Upload PDF, DOCX, PPT, images, and more</div>
+    </a>
+    <a href="/settings" class="bg-gray-900 rounded-xl border border-gray-800 p-5 hover:border-amber-500/50 transition-colors group">
+        <div class="text-lg font-semibold text-amber-400 group-hover:text-amber-300">Settings</div>
+        <div class="text-sm text-gray-500 mt-1">Configure API token, model defaults & parameters</div>
+    </a>
+</div>
+
+<!-- Recent Tasks -->
+<div>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Recent Tasks</h2>
+        <a href="/history" class="text-sm text-emerald-400 hover:text-emerald-300">View all &rarr;</a>
+    </div>
+
+    {% if recent_tasks %}
+    <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-gray-800 text-gray-500 text-left">
+                    <th class="px-4 py-3 font-medium">File</th>
+                    <th class="px-4 py-3 font-medium">Type</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                    <th class="px-4 py-3 font-medium hidden md:table-cell">Progress</th>
+                    <th class="px-4 py-3 font-medium hidden md:table-cell">Time</th>
+                    <th class="px-4 py-3 font-medium"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for task in recent_tasks %}
+                <tr class="hover:bg-gray-800/50 transition-colors">
+                    <td class="px-4 py-3 max-w-[200px] truncate" title="{{ task.file_name }}">{{ task.file_name or '(unnamed)' }}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{{ task.task_type }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% set st = task.state %}
+                        {% if st == 'done' %}
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Done</span>
+                        {% elif st == 'failed' %}
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">Failed</span>
+                        {% elif st in ('running', 'splitting', 'converting') %}
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">{{ st }}</span>
+                        {% else %}
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">{{ st }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 hidden md:table-cell">
+                        {% if task.total_pages > 0 %}
+                        <div class="flex items-center gap-2">
+                            <div class="w-20 bg-gray-700 rounded-full h-1.5">
+                                <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {{ (task.progress_pages / task.total_pages * 100) | int }}%"></div>
+                            </div>
+                            <span class="text-gray-500 text-xs">{{ task.progress_pages }}/{{ task.total_pages }}</span>
+                        </div>
+                        {% else %}
+                        <span class="text-gray-600">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-500 hidden md:table-cell text-xs" title="{{ task.created_at }}"></td>
+                    <td class="px-4 py-3 text-right">
+                        <a href="/tasks/{{ task.id }}" class="text-emerald-400 hover:text-emerald-300 text-xs">View &rarr;</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+        <div class="text-gray-500 text-sm">No tasks yet.</div>
+        <a href="/tasks/new" class="text-emerald-400 hover:text-emerald-300 text-sm mt-2 inline-block">Create your first task &rarr;</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Render time-ago for task list
+document.querySelectorAll('td.text-gray-500.hidden.md\\:table-cell').forEach(td => {
+    const isoStr = td.getAttribute('title');
+    if (isoStr) { td.textContent = timeAgo(isoStr); }
+});
+</script>
+{% endblock %}

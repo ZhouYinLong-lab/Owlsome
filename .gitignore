@@ -1,0 +1,43 @@
+# Owlsome Learning repository hygiene
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# Local runtime data
+learning_platform/backend/data/*.db
+learning_platform/backend/data/*.db-*
+mineru_tools/data/
+mineru_tools/output/
+mineru_tools/uploads/
+mineru_tools/config.json
+
+# Secrets and local env
+.env
+*.env
+!.env.example
+
+# Large local archives
+*.zip
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+

@@ -1,0 +1,5 @@
+backend/data/*.db
+backend/data/*.db-*
+backend/app/**/__pycache__/
+frontend/node_modules/
+frontend/dist/

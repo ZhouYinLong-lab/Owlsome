@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold">Settings</h1>
+    <p class="text-gray-500 text-sm mt-1">Configure MinerU API and defaults</p>
+</div>
+
+<div class="max-w-2xl">
+    <form id="settings-form" class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-5">
+        <div>
+            <label for="token" class="block text-sm font-medium mb-2">API Token</label>
+            <input type="password" id="token" name="token" value="{{ config.get('token', '') }}"
+                placeholder="Your MinerU API token"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors">
+            <p class="text-xs text-gray-600 mt-1">
+                Required for Precision API. Get it from
+                <a href="https://mineru.net/apiManage/docs" target="_blank" class="text-emerald-400 hover:text-emerald-300">mineru.net/apiManage/docs</a>
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label for="default_model" class="block text-sm font-medium mb-2">Default Model</label>
+                <select id="default_model" name="default_model"
+                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                    <option value="vlm" {{ 'selected' if config.get('default_model') == 'vlm' else '' }}>vlm (Recommended)</option>
+                    <option value="pipeline" {{ 'selected' if config.get('default_model') == 'pipeline' else '' }}>pipeline</option>
+                    <option value="MinerU-HTML" {{ 'selected' if config.get('default_model') == 'MinerU-HTML' else '' }}>MinerU-HTML</option>
+                </select>
+            </div>
+            <div>
+                <label for="default_language" class="block text-sm font-medium mb-2">Default Language</label>
+                <select id="default_language" name="default_language"
+                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                    <option value="ch" {{ 'selected' if config.get('default_language') == 'ch' else '' }}>Chinese</option>
+                    <option value="en" {{ 'selected' if config.get('default_language') == 'en' else '' }}>English</option>
+                    <option value="ja" {{ 'selected' if config.get('default_language') == 'ja' else '' }}>Japanese</option>
+                    <option value="ko" {{ 'selected' if config.get('default_language') == 'ko' else '' }}>Korean</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label for="requests_per_second" class="block text-sm font-medium mb-2">Rate Limit (req/sec)</label>
+                <input type="number" id="requests_per_second" name="requests_per_second" value="{{ config.get('requests_per_second', 3.0) }}"
+                    min="1" max="10" step="0.5"
+                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label for="task_timeout" class="block text-sm font-medium mb-2">Task Timeout (seconds)</label>
+                <input type="number" id="task_timeout" name="task_timeout" value="{{ config.get('task_timeout', 600) }}"
+                    min="60" max="3600" step="60"
+                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold rounded-lg transition-colors">
+                Save Settings
+            </button>
+        </div>
+    </form>
+
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mt-6">
+        <h3 class="text-sm font-semibold mb-2">Data Management</h3>
+        <p class="text-xs text-gray-500 mb-3">Output files and uploads are stored locally. Clear them to free disk space.</p>
+        <div class="flex gap-3">
+            <button onclick="clearOutput()" class="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg transition-colors">
+                Clear Output Files
+            </button>
+            <button onclick="clearUploads()" class="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg transition-colors">
+                Clear Uploads
+            </button>
+        </div>
+        <div class="mt-3 text-xs text-gray-500">
+            <span>Database: </span><code class="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">data/tasks.db</code>
+            <span class="ml-4">Output: </span><code class="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">output/</code>
+            <span class="ml-4">Uploads: </span><code class="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">uploads/</code>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('settings-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    try {
+        const resp = await fetch('/api/settings', { method: 'POST', body: fd });
+        if (resp.ok) {
+            showToast('Settings saved', 'success');
+        } else {
+            showToast('Failed to save settings', 'error');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+});
+
+function clearOutput() {
+    if (!confirm('Delete all output files? This cannot be undone.')) return;
+    fetch('/api/settings/clear-output', { method: 'POST' }).then(r => {
+        if (r.ok) showToast('Output files cleared', 'success');
+        else showToast('Failed', 'error');
+    });
+}
+
+function clearUploads() {
+    if (!confirm('Delete all uploaded files? This cannot be undone.')) return;
+    fetch('/api/settings/clear-uploads', { method: 'POST' }).then(r => {
+        if (r.ok) showToast('Uploads cleared', 'success');
+        else showToast('Failed', 'error');
+    });
+}
+</script>
+{% endblock %}

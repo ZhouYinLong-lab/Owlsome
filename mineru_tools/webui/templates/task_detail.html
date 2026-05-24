@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Task {{ task.id }}{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+<style>
+#markdown-preview { max-height: 60vh; overflow-y: auto; }
+#markdown-preview table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+#markdown-preview th, #markdown-preview td { border: 1px solid #374151; padding: 0.4rem 0.75rem; text-align: left; font-size: 0.85rem; }
+#markdown-preview th { background: #1f2937; font-weight: 600; }
+#markdown-preview thead { border-bottom: 2px solid #4b5563; }
+#markdown-preview tbody tr:nth-child(even) { background: rgba(55,65,81,0.3); }
+#markdown-preview h1 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; border-bottom: 1px solid #374151; padding-bottom: 0.25rem; }
+#markdown-preview h2 { font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+#markdown-preview h3 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+#markdown-preview h4, #markdown-preview h5, #markdown-preview h6 { font-weight: 600; margin: 0.5rem 0 0.25rem; }
+#markdown-preview p { margin: 0.5rem 0; line-height: 1.7; }
+#markdown-preview code { background: #1f2937; padding: 0.125rem 0.3rem; border-radius: 0.25rem; font-size: 0.82rem; font-family: 'Consolas','Monaco','Courier New',monospace; }
+#markdown-preview pre { background: #111827; padding: 0.75rem 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; border: 1px solid #1f2937; }
+#markdown-preview pre code { background: none; padding: 0; font-size: 0.8rem; line-height: 1.5; }
+#markdown-preview img { max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0; }
+#markdown-preview blockquote { border-left: 3px solid #10b981; padding: 0.25rem 1rem; margin: 0.5rem 0; color: #9ca3af; background: rgba(16,185,129,0.05); border-radius: 0 0.25rem 0.25rem 0; }
+#markdown-preview ul, #markdown-preview ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+#markdown-preview li { margin: 0.2rem 0; line-height: 1.6; }
+#markdown-preview a { color: #34d399; text-decoration: underline; }
+#markdown-preview hr { border: none; border-top: 1px solid #374151; margin: 1rem 0; }
+#markdown-preview strong { font-weight: 700; color: #e5e7eb; }
+#markdown-preview em { font-style: italic; }
+#markdown-preview del { text-decoration: line-through; color: #6b7280; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+#status-dot.pulse { animation: pulse 1.5s ease-in-out infinite; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <div class="flex items-center gap-3">
+            <a href="/history" class="text-gray-500 hover:text-gray-400 text-sm">&larr; History</a>
+            <h1 class="text-xl font-bold">Task #{{ task.id }}</h1>
+        </div>
+        <p class="text-gray-500 text-xs mt-1 truncate max-w-xl" title="{{ task.file_name }}">{{ task.file_name }}</p>
+    </div>
+    <button onclick="deleteTask()" class="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-lg transition-colors">
+        Delete
+    </button>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-4">
+        <div id="status-card" class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+            <div class="flex items-center gap-3 mb-4">
+                <div id="status-dot" class="w-3 h-3 rounded-full {{ 'bg-emerald-500' if task.state == 'done' else 'bg-red-500' if task.state == 'failed' else 'bg-cyan-500 pulse' }}"></div>
+                <span id="status-text" class="text-sm font-semibold capitalize">{{ task.state }}</span>
+                <span class="text-gray-600 text-xs">|</span>
+                <span class="text-gray-500 text-xs">{{ task.task_type }}</span>
+                <span class="text-gray-600 text-xs">|</span>
+                <span class="text-gray-500 text-xs">model: {{ task.model_version }}</span>
+            </div>
+
+            <div id="progress-section" class="{{ 'hidden' if task.state in ('done', 'failed') else '' }}">
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                    <span id="progress-label">{{ 'Processing...' if task.state == 'running' else 'Pending...' }}</span>
+                    <span id="progress-pct">{{ (task.progress_pages / task.total_pages * 100) | int if task.total_pages > 0 else 0 }}%</span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-2">
+                    <div id="progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                        style="width: {{ (task.progress_pages / task.total_pages * 100) | int if task.total_pages > 0 else 0 }}%"></div>
+                </div>
+                <div id="progress-detail" class="text-xs text-gray-600 mt-1">
+                    {% if task.total_pages > 0 %}{{ task.progress_pages }} / {{ task.total_pages }} pages{% endif %}
+                </div>
+            </div>
+
+            <div id="chunk-section" class="hidden mt-3">
+                <div class="text-xs text-gray-500 mb-1">Chunks: <span id="chunk-text">—</span></div>
+                <div class="w-full bg-gray-800 rounded-full h-1.5">
+                    <div id="chunk-bar" class="bg-cyan-500 h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+                </div>
+            </div>
+
+            <div id="error-section" class="hidden mt-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <div class="text-sm text-red-400" id="error-msg"></div>
+            </div>
+
+            <div id="result-info" class="mt-3 text-xs text-gray-500 space-y-1 {{ 'hidden' if task.state not in ('done',) else '' }}">
+                <div>Task ID: <span class="text-gray-300" id="result-task-id">{{ task.task_id or '—' }}</span></div>
+                <div>Output: <span class="text-gray-300" id="result-dir">{{ task.local_output_dir or '—' }}</span></div>
+            </div>
+        </div>
+
+        <div id="md-card" class="bg-gray-900 rounded-xl border border-gray-800 p-5 {{ 'hidden' if not task.markdown_content else '' }}">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold">Markdown Output</h3>
+                <span id="md-line-count" class="text-xs text-gray-600"></span>
+            </div>
+            <div id="markdown-preview" class="text-sm text-gray-300"></div>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+            <h3 class="text-sm font-semibold mb-3">Task Details</h3>
+            <div class="text-xs space-y-2">
+                <div class="flex justify-between"><span class="text-gray-500">Type</span><span class="text-gray-300">{{ task.task_type }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Model</span><span class="text-gray-300">{{ task.model_version }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Language</span><span class="text-gray-300">{{ task.language }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">OCR</span><span class="text-gray-300">{{ 'Yes' if task.is_ocr else 'No' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Formula</span><span class="text-gray-300">{{ 'Yes' if task.enable_formula else 'No' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Table</span><span class="text-gray-300">{{ 'Yes' if task.enable_table else 'No' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Created</span><span class="text-gray-300" id="created-at"></span></div>
+            </div>
+        </div>
+
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+            <h3 class="text-sm font-semibold mb-3">Actions</h3>
+            <div class="space-y-2">
+                <button id="btn-download-md" onclick="downloadMarkdown()" disabled
+                    class="w-full py-2 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    Download Markdown
+                </button>
+                <button id="btn-copy-md" onclick="copyMarkdown()" disabled
+                    class="w-full py-2 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    Copy Markdown
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DB_ID = {{ task.id }};
+const TASK_FILENAME = {{ task.file_name | tojson }};
+const INITIAL_STATE = '{{ task.state }}';
+
+let rawMarkdown = '';
+
+function connectSSE() {
+    const es = new EventSource('/api/tasks/' + DB_ID + '/sse');
+
+    es.addEventListener('status', e => {
+        const d = JSON.parse(e.data);
+        updateStatus(d.state, d);
+    });
+
+    es.addEventListener('progress', e => {
+        const d = JSON.parse(e.data);
+        document.getElementById('progress-section').classList.remove('hidden');
+        document.getElementById('progress-label').textContent = d.state || 'Processing...';
+        document.getElementById('progress-pct').textContent =
+            d.total_pages > 0 ? Math.round(d.extracted_pages / d.total_pages * 100) + '%' : '';
+        document.getElementById('progress-bar').style.width =
+            d.total_pages > 0 ? Math.round(d.extracted_pages / d.total_pages * 100) + '%' : '0%';
+        document.getElementById('progress-detail').textContent =
+            d.total_pages > 0 ? d.extracted_pages + ' / ' + d.total_pages + ' pages' : '';
+    });
+
+    es.addEventListener('chunk', e => {
+        const d = JSON.parse(e.data);
+        const sec = document.getElementById('chunk-section');
+        sec.classList.remove('hidden');
+        sec.querySelector('#chunk-text').textContent = `Chunk ${d.chunk_index}/${d.chunk_total} (${d.state})`;
+        document.getElementById('chunk-bar').style.width = Math.round(d.chunk_index / d.chunk_total * 100) + '%';
+    });
+
+    es.addEventListener('result', e => {
+        const d = JSON.parse(e.data);
+        updateStatus('done', d);
+
+        document.getElementById('result-task-id').textContent = d.task_id || '';
+        document.getElementById('result-dir').textContent = d.local_output_dir || '';
+
+        if (d.markdown_content) {
+            showMarkdown(d.markdown_content);
+        } else {
+            fetchMarkdown();
+        }
+
+        es.close();
+    });
+
+    es.addEventListener('error', e => {
+        let msg = 'Unknown error';
+        try { msg = JSON.parse(e.data).error || msg; } catch (_) {}
+        document.getElementById('error-section').classList.remove('hidden');
+        document.getElementById('error-msg').textContent = msg;
+        updateStatus('failed', { error: msg });
+        es.close();
+    });
+
+    es.addEventListener('heartbeat', () => {});
+
+    es.onerror = () => {};
+
+    return es;
+}
+
+function updateStatus(state, data) {
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+
+    dot.className = 'w-3 h-3 rounded-full';
+    if (state === 'done') {
+        dot.classList.add('bg-emerald-500');
+        text.textContent = 'Done';
+    } else if (state === 'failed') {
+        dot.classList.add('bg-red-500');
+        text.textContent = 'Failed';
+    } else if (state === 'running' || state === 'splitting' || state === 'converting') {
+        dot.classList.add('bg-cyan-500', 'pulse');
+        text.textContent = state;
+    } else {
+        dot.classList.add('bg-amber-500', 'pulse');
+        text.textContent = state;
+    }
+
+    if (state === 'done' || state === 'failed') {
+        document.getElementById('progress-section').classList.add('hidden');
+        document.getElementById('chunk-section').classList.add('hidden');
+
+        if (state === 'done') {
+            document.getElementById('btn-download-md').disabled = false;
+            document.getElementById('btn-copy-md').disabled = false;
+            document.getElementById('result-info').classList.remove('hidden');
+        }
+    }
+}
+
+function showMarkdown(md) {
+    rawMarkdown = md;
+    const card = document.getElementById('md-card');
+    card.classList.remove('hidden');
+
+    // Use marked.js for proper rendering
+    const html = marked.parse(md);
+    document.getElementById('markdown-preview').innerHTML = html;
+
+    // Show line count
+    const lines = md.split('\n').length;
+    document.getElementById('md-line-count').textContent = lines + ' lines';
+
+    document.getElementById('btn-download-md').disabled = false;
+    document.getElementById('btn-copy-md').disabled = false;
+}
+
+async function fetchMarkdown() {
+    try {
+        const resp = await fetch('/api/tasks/' + DB_ID + '/markdown');
+        const data = await resp.json();
+        if (data.markdown_content) showMarkdown(data.markdown_content);
+    } catch (_) {}
+}
+
+function downloadMarkdown() {
+    if (!rawMarkdown) return;
+    const blob = new Blob([rawMarkdown], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    // Use original filename with .md extension
+    const baseName = TASK_FILENAME.replace(/\.[^.]+$/, '') || 'output';
+    a.download = baseName + '.md';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+async function copyMarkdown() {
+    if (!rawMarkdown) return;
+    try {
+        await navigator.clipboard.writeText(rawMarkdown);
+        showToast('Markdown copied to clipboard', 'success');
+    } catch (_) {
+        showToast('Failed to copy', 'error');
+    }
+}
+
+async function deleteTask() {
+    if (!confirm('Delete this task and its output files?')) return;
+    await fetch('/api/tasks/' + DB_ID, { method: 'DELETE' });
+    showToast('Task deleted', 'success');
+    setTimeout(() => { window.location.href = '/history'; }, 500);
+}
+
+// Init
+document.getElementById('created-at').textContent = timeAgo('{{ task.created_at }}');
+
+const sse = connectSSE();
+
+if (INITIAL_STATE === 'done') {
+    {% if task.markdown_content %}
+    showMarkdown({{ task.markdown_content | tojson }});
+    {% else %}
+    fetchMarkdown();
+    {% endif %}
+    document.getElementById('btn-download-md').disabled = false;
+    document.getElementById('btn-copy-md').disabled = false;
+    sse.close();
+}
+</script>
+{% endblock %}

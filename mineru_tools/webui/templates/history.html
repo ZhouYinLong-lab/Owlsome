@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Task History{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-bold">Task History</h1>
+        <p class="text-gray-500 text-sm mt-1">All parsing tasks</p>
+    </div>
+    <a href="/tasks/new" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-sm font-medium rounded-lg transition-colors">+ New Task</a>
+</div>
+
+<!-- Filter tabs -->
+<div class="flex gap-2 mb-6">
+    {% set filters = [('', 'All'), ('pending', 'Pending'), ('running', 'Running'), ('done', 'Done'), ('failed', 'Failed')] %}
+    {% for val, label in filters %}
+    <a href="?state={{ val }}"
+        class="px-3 py-1.5 text-xs rounded-lg transition-colors {{ 'bg-emerald-500/20 text-emerald-400' if current_state == val else 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700' }}">
+        {{ label }}
+        {% if val %}<span class="ml-1 text-gray-600">({{ stats.get(val, 0) }})</span>{% endif %}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Task list -->
+{% if tasks %}
+<div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-gray-800 text-gray-500 text-left text-xs uppercase tracking-wide">
+                <th class="px-4 py-3 font-medium">ID</th>
+                <th class="px-4 py-3 font-medium">File</th>
+                <th class="px-4 py-3 font-medium">Type</th>
+                <th class="px-4 py-3 font-medium">Status</th>
+                <th class="px-4 py-3 font-medium hidden md:table-cell">Progress</th>
+                <th class="px-4 py-3 font-medium hidden md:table-cell">Created</th>
+                <th class="px-4 py-3 font-medium"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+            {% for task in tasks %}
+            <tr class="hover:bg-gray-800/30 transition-colors">
+                <td class="px-4 py-3 text-gray-500 text-xs">#{{ task.id }}</td>
+                <td class="px-4 py-3 max-w-[200px] truncate" title="{{ task.file_name }}">{{ task.file_name or '(unnamed)' }}</td>
+                <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{{ task.task_type }}</span>
+                </td>
+                <td class="px-4 py-3">
+                    {% set st = task.state %}
+                    {% if st == 'done' %}
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Done</span>
+                    {% elif st == 'failed' %}
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">Failed</span>
+                    {% elif st in ('running', 'splitting', 'converting') %}
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">{{ st }}</span>
+                    {% else %}
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">{{ st }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                    {% if task.total_pages > 0 %}
+                    <div class="flex items-center gap-2">
+                        <div class="w-16 bg-gray-700 rounded-full h-1.5">
+                            <div class="bg-emerald-500 h-1.5 rounded-full"
+                                style="width: {{ (task.progress_pages / task.total_pages * 100) | int if task.total_pages > 0 else 0 }}%"></div>
+                        </div>
+                        <span class="text-gray-500 text-xs">{{ task.progress_pages }}/{{ task.total_pages }}</span>
+                    </div>
+                    {% else %}
+                    <span class="text-gray-600">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-500 hidden md:table-cell text-xs" title="{{ task.created_at }}"></td>
+                <td class="px-4 py-3 text-right">
+                    <a href="/tasks/{{ task.id }}" class="text-emerald-400 hover:text-emerald-300 text-xs">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-4">
+    <span class="text-xs text-gray-500">Page {{ page }}</span>
+    <div class="flex gap-2">
+        {% if page > 1 %}
+        <a href="?state={{ current_state }}&page={{ page - 1 }}" class="px-3 py-1.5 text-xs bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">&larr; Prev</a>
+        {% endif %}
+        <a href="?state={{ current_state }}&page={{ page + 1 }}" class="px-3 py-1.5 text-xs bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">Next &rarr;</a>
+    </div>
+</div>
+{% else %}
+<div class="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+    <div class="text-gray-500 text-sm">No tasks found.</div>
+    <a href="/tasks/new" class="text-emerald-400 hover:text-emerald-300 text-sm mt-2 inline-block">Create one &rarr;</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('td.text-xs[title]').forEach(td => {
+    const iso = td.getAttribute('title');
+    if (iso) td.textContent = timeAgo(iso);
+});
+</script>
+{% endblock %}

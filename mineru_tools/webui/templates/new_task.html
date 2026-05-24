@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}New Task{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold">New Task</h1>
+    <p class="text-gray-500 text-sm mt-1">Submit a document for parsing via MinerU API</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main form -->
+    <div class="lg:col-span-2">
+        <form id="task-form" class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-5">
+            <!-- API Mode -->
+            <div>
+                <label class="block text-sm font-medium mb-2">API Mode</label>
+                <div class="flex gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="task_type" value="precision" checked class="accent-emerald-500">
+                        <span class="text-sm">Precision API (Token required)</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="task_type" value="agent" class="accent-emerald-500">
+                        <span class="text-sm">Agent API (No token, ≤10MB/≤20pp)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- File URL -->
+            <div id="url-section">
+                <label for="file_url" class="block text-sm font-medium mb-2">File URL</label>
+                <input type="url" id="file_url" name="file_url" placeholder="https://example.com/document.pdf"
+                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors">
+                <p class="text-xs text-gray-600 mt-1">Supports: PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, images, HTML</p>
+            </div>
+
+            <!-- OR divider -->
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-800"></div></div>
+                <div class="relative flex justify-center"><span class="bg-gray-900 px-3 text-xs text-gray-500">OR</span></div>
+            </div>
+
+            <!-- File Upload -->
+            <div id="upload-section">
+                <label class="block text-sm font-medium mb-2">Upload File (for large PDF split & merge)</label>
+                <div id="drop-zone"
+                    class="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center hover:border-gray-500 transition-colors cursor-pointer">
+                    <input type="file" id="pdf_file" name="pdf_file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.html"
+                        class="hidden">
+                    <div id="drop-zone-content">
+                        <div class="text-3xl mb-2">&#128196;</div>
+                        <div class="text-sm text-gray-400">Drag & drop a file here, or <span class="text-emerald-400">browse</span></div>
+                        <div class="text-xs text-gray-600 mt-1">PDF files &gt;200 pages will be auto-split</div>
+                    </div>
+                    <div id="file-preview" class="hidden">
+                        <div class="text-2xl mb-2">&#9989;</div>
+                        <div id="file-name" class="text-sm text-emerald-400 font-medium"></div>
+                        <div id="file-size" class="text-xs text-gray-500"></div>
+                        <button type="button" id="clear-file" class="text-xs text-red-400 hover:text-red-300 mt-2">Remove</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model & Params -->
+            <fieldset class="border border-gray-800 rounded-lg p-4 space-y-4">
+                <legend class="text-sm font-medium px-2">Parsing Options</legend>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Model Version</label>
+                        <select name="model_version"
+                            class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            <option value="vlm">vlm (Recommended)</option>
+                            <option value="pipeline">pipeline</option>
+                            <option value="MinerU-HTML">MinerU-HTML</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Language</label>
+                        <select name="language"
+                            class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            <option value="ch">Chinese</option>
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Page Ranges</label>
+                        <input type="text" name="page_ranges" placeholder="e.g. 1-10, 2,4-6"
+                            class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="is_ocr" class="accent-emerald-500"> <span class="text-sm">OCR</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="enable_formula" checked class="accent-emerald-500"> <span class="text-sm">Formula</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="enable_table" checked class="accent-emerald-500"> <span class="text-sm">Table</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="no_cache" class="accent-emerald-500"> <span class="text-sm">Skip cache</span>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Extra Formats (comma-separated)</label>
+                    <input type="text" name="extra_formats" placeholder="docx, html, latex"
+                        class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+            </fieldset>
+
+            <!-- Submit -->
+            <button type="submit"
+                class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                Start Parsing
+            </button>
+        </form>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="space-y-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+            <h3 class="text-sm font-semibold mb-3">API Mode Comparison</h3>
+            <div class="text-xs space-y-2 text-gray-400">
+                <div class="flex justify-between"><span>Token</span> <span class="text-gray-300">Precision: Required / Agent: No</span></div>
+                <div class="flex justify-between"><span>File Size</span> <span class="text-gray-300">≤200MB / ≤10MB</span></div>
+                <div class="flex justify-between"><span>Pages</span> <span class="text-gray-300">≤200 / ≤20</span></div>
+                <div class="flex justify-between"><span>Output</span> <span class="text-gray-300">ZIP bundle / MD only</span></div>
+                <div class="flex justify-between"><span>Batch</span> <span class="text-gray-300">Yes / No</span></div>
+            </div>
+        </div>
+
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+            <h3 class="text-sm font-semibold mb-3">Tips</h3>
+            <ul class="text-xs text-gray-400 space-y-2 list-disc pl-4">
+                <li>Set API token in <a href="/settings" class="text-emerald-400 hover:text-emerald-300">Settings</a> first</li>
+                <li>Agent API has no daily quota limit but is IP rate-limited</li>
+                <li>Precision API: 1000 priority pages/day per account</li>
+                <li>Large PDFs (>200 pages) auto-split into chunks</li>
+                <li>Progress is tracked in real-time on the task detail page</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const form = document.getElementById('task-form');
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('pdf_file');
+const preview = document.getElementById('file-preview');
+const dropContent = document.getElementById('drop-zone-content');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-emerald-500'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-emerald-500'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('border-emerald-500');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+document.getElementById('clear-file').addEventListener('click', () => {
+    fileInput.value = '';
+    preview.classList.add('hidden');
+    dropContent.classList.remove('hidden');
+});
+
+function handleFile(file) {
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-size').textContent = formatBytes(file.size);
+    preview.classList.remove('hidden');
+    dropContent.classList.add('hidden');
+}
+
+form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    const fd = new FormData(form);
+    try {
+        const resp = await fetch('/api/tasks', { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (data.error) {
+            showToast(data.error, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Start Parsing';
+            return;
+        }
+        showToast('Task created! Redirecting...', 'success');
+        window.location.href = '/tasks/' + data.db_id;
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Start Parsing';
+    }
+});
+</script>
+{% endblock %}
