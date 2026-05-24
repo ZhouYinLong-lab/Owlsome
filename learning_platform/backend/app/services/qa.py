@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -9,6 +10,37 @@ from app.db import get_connection, row_to_dict, rows_to_dicts
 
 
 load_dotenv()
+
+
+def safe_markdown_excerpt(markdown: str, limit: int = 220) -> str:
+    """Return a renderer-safe excerpt for offline answers.
+
+    The offline demo stitches content snippets into a new Markdown answer.
+    Truncating raw教材片段 can cut a LaTeX expression in half, which then makes
+    KaTeX show a red parse error.  We remove math blocks and heavy Markdown
+    syntax here so Q&A remains readable even without an LLM.
+    """
+    text = re.sub(r"^---\n[\s\S]*?\n---\n?", "", markdown)
+    text = re.sub(r"\$\$[\s\S]*?\$\$", "（公式略）", text)
+    text = re.sub(r"\\\[[\s\S]*?\\\]", "（公式略）", text)
+    text = re.sub(r"\$[^$\n]+\$", "（公式）", text)
+    text = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", text)
+    text = re.sub(r"\[\[([^\]]+)\]\]", r"\1", text)
+    text = re.sub(r"^[>#*\-\s]+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\\[a-zA-Z]+(?:\s*\{[^}]*\})*", "（公式）", text)
+    text = re.sub(r"[`*_~|$\\{}]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if len(text) <= limit:
+        return text
+
+    clipped = text[:limit]
+    boundary = max(clipped.rfind(mark) for mark in "。；;，, ")
+    if boundary > limit * 0.6:
+        clipped = clipped[:boundary]
+    return clipped.rstrip(" ，,；;。") + "..."
 
 
 def build_context(knowledge_point_id: int) -> dict:
@@ -76,13 +108,13 @@ def offline_answer(context: dict, question: str) -> str:
         f"当前知识点是 {point['code']} {point['title']}。{point['summary']}",
     ]
     if definition:
-        parts.append(f"先看定义线索：{definition['content'][:220]}...")
+        parts.append(f"先看定义线索：{safe_markdown_excerpt(definition['content'])}")
     if theorem:
-        parts.append(f"相关定理：{theorem['content'][:220]}...")
+        parts.append(f"相关定理：{safe_markdown_excerpt(theorem['content'])}")
     if example:
         parts.append(f"可以参考例题：{example['title']}。解题时先识别变量关系，再按教材步骤计算。")
     if notes:
-        parts.append(f"已审核笔记补充：{notes[0]['content'][:160]}...")
+        parts.append(f"已审核笔记补充：{safe_markdown_excerpt(notes[0]['content'], 160)}")
     parts.append("离线模式建议：回到本知识点的定义、定理和例题三块内容交叉查看，先理解条件，再做习题。")
     return "\n\n".join(parts)
 

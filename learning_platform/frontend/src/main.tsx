@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeKatex from "rehype-katex";
 import {
   BookOpen,
@@ -115,6 +118,42 @@ type PersonalSpaceDetail = PersonalSpace & {
 
 type Tab = "dashboard" | "knowledge" | "personal" | "review" | "pipeline";
 
+type ObsidianBlock =
+  | { type: "markdown"; content: string }
+  | { type: "callout"; kind: string; title: string; content: string; folded: boolean };
+
+const katexOptions = {
+  throwOnError: false,
+  strict: false
+};
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), "mark"]
+};
+
+const calloutLabels: Record<string, string> = {
+  abstract: "摘要",
+  bug: "问题",
+  danger: "危险",
+  error: "错误",
+  example: "示例",
+  failure: "失败",
+  faq: "问答",
+  help: "帮助",
+  hint: "提示",
+  important: "重点",
+  info: "信息",
+  note: "笔记",
+  question: "问题",
+  quote: "引用",
+  success: "成功",
+  summary: "摘要",
+  tip: "提示",
+  todo: "待办",
+  warning: "警告"
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -130,22 +169,100 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function Markdown({ children }: { children: string }) {
-  const rendered = preprocessObsidianMarkdown(children);
+function MarkdownSource({ children, inline = false }: { children: string; inline?: boolean }) {
+  const rendered = preprocessObsidianInlineSyntax(children);
   return (
-    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], [rehypeKatex, katexOptions]]}
+      components={inline ? { p: React.Fragment } : undefined}
+    >
       {rendered}
     </ReactMarkdown>
   );
 }
 
-function preprocessObsidianMarkdown(markdown: string) {
+function Markdown({ children }: { children: string }) {
+  const blocks = parseObsidianBlocks(children);
+  return (
+    <div className="markdown-body">
+      {blocks.map((block, index) => {
+        if (block.type === "callout") {
+          return (
+            <div className={`obsidian-callout obsidian-callout-${block.kind}`} key={`${block.kind}-${index}`}>
+              <div className="obsidian-callout-title">
+                <span>{calloutLabels[block.kind] ?? block.kind}</span>
+                <strong>{block.title}</strong>
+              </div>
+              {block.content && <MarkdownSource>{block.content}</MarkdownSource>}
+            </div>
+          );
+        }
+        return <MarkdownSource key={`markdown-${index}`}>{block.content}</MarkdownSource>;
+      })}
+    </div>
+  );
+}
+
+function InlineMarkdown({ children }: { children: string }) {
+  return (
+    <span className="markdown-inline">
+      <MarkdownSource inline>{children}</MarkdownSource>
+    </span>
+  );
+}
+
+function preprocessObsidianInlineSyntax(markdown: string) {
   return markdown
     .replace(/^---\n[\s\S]*?\n---\n?/, "")
     .replace(/!\[\[([^\]]+)\]\]/g, (_match, target) => `![${target}](${target})`)
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_match, target, label) => `[${label}](#wikilink-${encodeURIComponent(target)})`)
     .replace(/\[\[([^\]]+)\]\]/g, (_match, target) => `[${target}](#wikilink-${encodeURIComponent(target)})`)
-    .replace(/==(.+?)==/g, "**$1**");
+    .replace(/==(.+?)==/g, "<mark>$1</mark>");
+}
+
+function stripFrontmatter(markdown: string) {
+  return markdown.replace(/^---\n[\s\S]*?\n---\n?/, "");
+}
+
+function parseObsidianBlocks(markdown: string): ObsidianBlock[] {
+  const lines = stripFrontmatter(markdown).split(/\r?\n/);
+  const blocks: ObsidianBlock[] = [];
+  let buffer: string[] = [];
+
+  function flushMarkdown() {
+    const content = buffer.join("\n").trim();
+    if (content) blocks.push({ type: "markdown", content });
+    buffer = [];
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const match = line.match(/^>\s*\[!([a-zA-Z-]+)\]([+-])?\s*(.*)$/);
+
+    if (!match) {
+      buffer.push(line);
+      continue;
+    }
+
+    flushMarkdown();
+    const kind = match[1].toLowerCase();
+    const folded = match[2] === "-";
+    const title = (match[3] || calloutLabels[kind] || kind).trim();
+    const body: string[] = [];
+
+    // Obsidian callouts are blockquotes whose first line is > [!type].
+    // Collect only the contiguous quoted lines so normal blockquotes still render normally.
+    while (index + 1 < lines.length && /^>\s?/.test(lines[index + 1])) {
+      index += 1;
+      body.push(lines[index].replace(/^>\s?/, ""));
+    }
+
+    blocks.push({ type: "callout", kind, title, content: body.join("\n").trim(), folded });
+  }
+
+  flushMarkdown();
+  return blocks;
 }
 
 function unitLabel(type: string) {
@@ -445,7 +562,7 @@ function KnowledgeBase(props: {
               onClick={() => props.onSelect(point.id)}
             >
               <span>{point.code}</span>
-              <strong>{point.title}</strong>
+              <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
               <small>{point.content_count} 个内容单元 · {point.approved_note_count} 条笔记</small>
             </button>
           ))}
@@ -500,7 +617,7 @@ function DetailPane({ detail }: { detail: KnowledgePointDetail | null }) {
     <div className="detailPane">
       <div className="detailHeader">
         <span>{detail.code}</span>
-        <h2>{detail.title}</h2>
+        <h2><InlineMarkdown>{detail.title}</InlineMarkdown></h2>
         <p>{detail.summary}</p>
       </div>
 
@@ -509,7 +626,7 @@ function DetailPane({ detail }: { detail: KnowledgePointDetail | null }) {
           <article className={`unit ${unit.unit_type}`} key={unit.id}>
             <div className="unitHead">
               <span>{unitLabel(unit.unit_type)}</span>
-              <strong>{unit.title || "教材内容"}</strong>
+              <strong><InlineMarkdown>{unit.title || "教材内容"}</InlineMarkdown></strong>
             </div>
             <Markdown>{unit.content}</Markdown>
           </article>
@@ -597,7 +714,7 @@ function PersonalSpaces(props: {
                 onClick={() => props.onSelectSpace(space.id)}
               >
                 <span>{space.source_type}</span>
-                <strong>{space.title}</strong>
+                <strong><InlineMarkdown>{space.title}</InlineMarkdown></strong>
                 <small>
                   {space.knowledge_point_count} 个知识点 · 已掌握 {space.progress.mastered}/{space.progress.total}
                 </small>
@@ -685,7 +802,7 @@ function PersonalSpaceDetailView(props: {
                 onClick={() => props.onSelectPoint(props.space!.id, point.id)}
               >
                 <span>{point.code}</span>
-                <strong>{point.title}</strong>
+                <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
                 <small>{progressLabel(point.progress_status)} · {point.content_count ?? 0} 个内容单元</small>
               </button>
             ))}
@@ -754,7 +871,7 @@ function PersonalPointDetail({ spaceId, point, onRefresh }: {
     <div className="detailPane">
       <div className="detailHeader">
         <span>{point.code} · {progressLabel(point.progress_status)}</span>
-        <h2>{point.title}</h2>
+        <h2><InlineMarkdown>{point.title}</InlineMarkdown></h2>
         <p>{point.summary}</p>
       </div>
 
@@ -780,7 +897,7 @@ function PersonalPointDetail({ spaceId, point, onRefresh }: {
           <article className={`unit ${unit.unit_type}`} key={unit.id}>
             <div className="unitHead">
               <span>{unitLabel(unit.unit_type)}</span>
-              <strong>{unit.title || "个人资料内容"}</strong>
+              <strong><InlineMarkdown>{unit.title || "个人资料内容"}</InlineMarkdown></strong>
             </div>
             <Markdown>{unit.content}</Markdown>
           </article>

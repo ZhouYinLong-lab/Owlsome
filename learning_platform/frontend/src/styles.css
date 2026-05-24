@@ -358,6 +358,101 @@ h1 {
   margin-bottom: 0.7em;
 }
 
+.markdown-body {
+  min-width: 0;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid #d4ddd5;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.markdown-body mark {
+  background: #fff1a8;
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.markdown-body .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+}
+
+.markdown-inline,
+.markdown-inline p {
+  display: inline;
+}
+
+.markdown-inline .katex {
+  font-size: 1em;
+}
+
+.obsidian-callout {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-left: 5px solid #496f61;
+  background: #eef3ee;
+  border-radius: 0 8px 8px 0;
+}
+
+.obsidian-callout-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.obsidian-callout-title span {
+  color: #496f61;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.obsidian-callout-info,
+.obsidian-callout-note,
+.obsidian-callout-tip,
+.obsidian-callout-hint,
+.obsidian-callout-important {
+  border-left-color: #496f61;
+  background: #eef3ee;
+}
+
+.obsidian-callout-warning,
+.obsidian-callout-danger,
+.obsidian-callout-error {
+  border-left-color: #b4554d;
+  background: #fff0ee;
+}
+
+.obsidian-callout-example,
+.obsidian-callout-question,
+.obsidian-callout-faq {
+  border-left-color: #d28b45;
+  background: #fff7df;
+}
+
+.obsidian-callout-success,
+.obsidian-callout-todo {
+  border-left-color: #4f8a8b;
+  background: #eef7f6;
+}
+
 .unit blockquote,
 .answer blockquote {
   margin: 10px 0;
