@@ -358,6 +358,15 @@ h1 {
   margin-bottom: 0.7em;
 }
 
+.unit blockquote,
+.answer blockquote {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-left: 4px solid #496f61;
+  background: #eef3ee;
+  border-radius: 0 8px 8px 0;
+}
+
 .interactionGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;

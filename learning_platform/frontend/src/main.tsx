@@ -131,11 +131,21 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function Markdown({ children }: { children: string }) {
+  const rendered = preprocessObsidianMarkdown(children);
   return (
     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-      {children}
+      {rendered}
     </ReactMarkdown>
   );
+}
+
+function preprocessObsidianMarkdown(markdown: string) {
+  return markdown
+    .replace(/^---\n[\s\S]*?\n---\n?/, "")
+    .replace(/!\[\[([^\]]+)\]\]/g, (_match, target) => `![${target}](${target})`)
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_match, target, label) => `[${label}](#wikilink-${encodeURIComponent(target)})`)
+    .replace(/\[\[([^\]]+)\]\]/g, (_match, target) => `[${target}](#wikilink-${encodeURIComponent(target)})`)
+    .replace(/==(.+?)==/g, "**$1**");
 }
 
 function unitLabel(type: string) {

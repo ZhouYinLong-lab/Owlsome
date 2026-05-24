@@ -8,12 +8,19 @@ import logging
 import queue
 import threading
 import time
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List, AsyncGenerator
 
 from . import db
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from owlsome_core.obsidian import normalize_obsidian_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +173,17 @@ def run_mineru_task(
     def _emit(event: str, data: Dict[str, Any]):
         emit_event(SSEEvent(db_id=db_id, event=event, data=data))
 
+    def _as_obsidian(markdown: str, file_name: str, source: str) -> str:
+        # MinerU remains responsible for PDF parsing; this post-processing step
+        # makes the resulting Markdown portable to Obsidian and Owlsome.
+        return normalize_obsidian_markdown(
+            markdown,
+            title=Path(file_name or "MinerU Output").stem,
+            source=source,
+            tags=["owlsome", "mineru", "pdf"],
+            doc_type="parsed_pdf",
+        )
+
     try:
         emit_event(SSEEvent(db_id=db_id, event="status", data={"state": "running"}))
 
@@ -192,7 +210,11 @@ def run_mineru_task(
             _emit("result", {
                 "task_id": result.task_id,
                 "file_name": result.file_name,
-                "markdown_content": result.markdown_content or "",
+                "markdown_content": _as_obsidian(
+                    result.markdown_content or "",
+                    result.file_name,
+                    local_file_path or file_url,
+                ),
                 "metadata": result.metadata,
             })
             client.close()
@@ -228,7 +250,11 @@ def run_mineru_task(
                     "task_id": "merged",
                     "file_name": Path(local_file_path).name,
                     "local_output_dir": merge_result.merged_output_dir or "",
-                    "markdown_content": merge_result.merged_markdown or "",
+                    "markdown_content": _as_obsidian(
+                        merge_result.merged_markdown or "",
+                        Path(local_file_path).name,
+                        local_file_path or "",
+                    ),
                     "chunks_done": merge_result.success_chunks,
                     "chunks_failed": merge_result.failed_chunks,
                     "total_pages": merge_result.total_pages,
@@ -257,7 +283,11 @@ def run_mineru_task(
                     "file_name": result.file_name,
                     "full_zip_url": result.full_zip_url or "",
                     "local_output_dir": result.local_output_dir or "",
-                    "markdown_content": result.markdown_content or "",
+                    "markdown_content": _as_obsidian(
+                        result.markdown_content or "",
+                        result.file_name,
+                        file_url,
+                    ),
                     "metadata": result.metadata,
                 })
 

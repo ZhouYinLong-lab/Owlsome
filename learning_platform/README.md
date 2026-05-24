@@ -29,6 +29,14 @@ npm run dev
 
 第一版 PDF 上传作为占位入口展示，后续接入链路为 `mineru_tools → text_archiver → learning_platform`。
 
+## Obsidian 兼容
+
+系统现在优先使用 Obsidian-compatible Markdown：
+
+- 支持 YAML frontmatter 作为资料元数据。
+- 保留 `[[双链]]`、`> [!note]` callout、`==高亮==`、任务列表、LaTeX 公式和图片链接。
+- MinerU 输出和 text_archiver 清洗结果都会尽量规范化为 Obsidian 友好的 Markdown。
+
 ## 可选 LLM 增强
 
 不配置 API Key 也能完整离线演示。若需要模型增强问答，可在后端运行环境中设置：
