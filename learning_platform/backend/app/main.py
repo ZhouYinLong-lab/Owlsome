@@ -30,6 +30,9 @@ app = FastAPI(title="AI 交互式数学学习平台 Demo", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    # Vite 在 5173 被占用时会自动切到 5174/5175。
+    # Demo 常在本机不同端口间切换，因此允许 localhost/127.0.0.1 的任意端口。
+    allow_origin_regex=r"^http://(127\.0\.0\.1|localhost):\d+$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
