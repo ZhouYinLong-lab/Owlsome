@@ -21,7 +21,24 @@ LOCAL_MINERU_MARKDOWN = (
     / "20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing"
     / "merged_full.md"
 )
-SAMPLE_MARKDOWN = TRACKED_SAMPLE_MARKDOWN if TRACKED_SAMPLE_MARKDOWN.exists() else LOCAL_MINERU_MARKDOWN
+LOCAL_FORMATTED_MARKDOWN = LOCAL_MINERU_MARKDOWN.with_name("merged_full_formatted.md")
+
+
+def resolve_sample_markdown() -> Path:
+    """Pick the best available sample source for the learning-platform demo.
+
+    The cleaned `merged_full_formatted.md` is preferred because it has already
+    passed through text_archiver's Obsidian-compatible cleanup pipeline. The
+    tracked chapter excerpt and raw MinerU output remain as fallbacks so fresh
+    clones and offline demos still work.
+    """
+    for candidate in (LOCAL_FORMATTED_MARKDOWN, TRACKED_SAMPLE_MARKDOWN, LOCAL_MINERU_MARKDOWN):
+        if candidate.exists():
+            return candidate
+    return LOCAL_FORMATTED_MARKDOWN
+
+
+SAMPLE_MARKDOWN = resolve_sample_markdown()
 
 
 def import_sample() -> ImportResult:

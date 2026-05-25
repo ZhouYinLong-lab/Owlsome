@@ -22,13 +22,13 @@ class SegmentedKnowledgePoint:
     units: list[SegmentedUnit] = field(default_factory=list)
 
 
-SECTION_START_RE = re.compile(r"^#\s+5\.(1|2)\s+(.+)$", re.MULTILINE)
-SUBSECTION_RE = re.compile(r"^#\s+(5\.(?:1|2)\.\d+)\s+(.+)$", re.MULTILINE)
+SECTION_START_RE = re.compile(r"^#{1,3}\s+5\.(1|2)\s+(.+)$", re.MULTILINE)
+SUBSECTION_RE = re.compile(r"^#{1,3}\s+(5\.(?:1|2)\.\d+)\s+(.+)$", re.MULTILINE)
 
 # 这些 marker 是第一版规则切分的核心：教材文本有比较稳定的“定义/定理/例/习题”
 # 起始格式。先用规则保证离线可演示，再给 LLM 增强留下入口。
 UNIT_MARKER_RE = re.compile(
-    r"^(定义\s*(?:\d+\.\d+\.\d+)?.*|定理\s*(?:\d+\.\d+\.\d+)?.*|定理\d+\.\d+\.\d+.*|例\s*(?:\d+\.\d+\.\d+)?.*|例\d+\.\d+\.\d+.*|#\s*习题\d+(?:\.\d+)?.*|习题\d+(?:\.\d+)?.*)$",
+    r"^\s*(?:>\s*)?(?:\[\![^\]]+\]\s*)?(?:#{1,6}\s*)?(?:\*\*)?(定义\s*(?:\d+\.\d+\.\d+)?.*|定理\s*(?:\d+\.\d+\.\d+)?.*|定理\d+\.\d+\.\d+.*|例\s*(?:\d+\.\d+\.\d+)?.*|例\d+\.\d+\.\d+.*|习题\s*\d+(?:\.\d+)?.*)$",
     re.MULTILINE,
 )
 GENERIC_HEADING_RE = re.compile(r"^(#{1,3})\s+(.+)$", re.MULTILINE)
@@ -40,19 +40,27 @@ def normalize_title(title: str) -> str:
 
 def extract_demo_scope(markdown: str) -> str:
     """Extract the real chapter body for 5.1-5.2, skipping the table of contents."""
-    chapter_match = re.search(r"^#\s+第\s*5\s*章\s+多元函数微分学\s*$", markdown, re.MULTILINE)
-    if not chapter_match:
+    chapter_matches = list(re.finditer(r"^#{1,3}\s+第\s*5\s*章\s+多元函数微分学\s*$", markdown, re.MULTILINE))
+    if not chapter_matches:
         raise ValueError("没有找到第 5 章正文，无法导入样例。")
 
-    start_match = SECTION_START_RE.search(markdown, chapter_match.end())
-    if not start_match:
-        raise ValueError("没有找到 5.1 或 5.2 正文。")
+    # Cleaned Markdown may contain a table of contents before the real chapter
+    # body. Try every chapter heading and keep the first range that contains
+    # substantial subsection content, instead of blindly accepting the TOC.
+    for chapter_match in chapter_matches:
+        start_match = SECTION_START_RE.search(markdown, chapter_match.end())
+        if not start_match:
+            continue
 
-    next_section = re.search(r"^#\s+5\.3\s+", markdown[start_match.start() :], re.MULTILINE)
-    if not next_section:
-        raise ValueError("没有找到 5.3 边界，无法稳定截取 5.1-5.2。")
-    end = start_match.start() + next_section.start()
-    return markdown[start_match.start() : end].strip()
+        next_section = re.search(r"^#{1,3}\s+5\.3\s+", markdown[start_match.start() :], re.MULTILINE)
+        if not next_section:
+            continue
+        end = start_match.start() + next_section.start()
+        scope = markdown[start_match.start() : end].strip()
+        if len(scope) > 5000 and SUBSECTION_RE.search(scope):
+            return scope
+
+    raise ValueError("没有找到 5.1-5.2 正文范围，无法稳定截取样例。")
 
 
 def split_subsections(scope_markdown: str) -> list[tuple[str, str, str]]:

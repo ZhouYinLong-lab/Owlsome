@@ -18,7 +18,13 @@ npm install
 npm run dev
 ```
 
-访问 `http://127.0.0.1:5173`，点击“一键导入样例”即可从仓库内置样例 Markdown 构建第 5 章 5.1-5.2 知识库。本地如果存在完整 MinerU 输出，也可继续作为回退来源。
+访问 `http://127.0.0.1:5173`，点击“一键导入样例”即可构建第 5 章 5.1-5.2 知识库。导入源优先级为：
+
+1. `D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full_formatted.md`
+2. `D:\Projects\EL\learning_platform\sample_data\calculus_ii_chapter5_mineru.md`
+3. `D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full.md`
+
+也就是说，本地存在完整 `text_archiver` 清洗结果时，demo 会优先使用清洗后的 Obsidian-compatible Markdown； fresh clone 或离线演示仍可回退到仓库内置样例。
 
 ## 个人学习空间
 
