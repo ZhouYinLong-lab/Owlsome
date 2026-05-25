@@ -52,3 +52,26 @@ $env:OPENROUTER_API_KEY="你的 Key"
 $env:OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
 $env:MODEL_NAME="deepseek/deepseek-v4-flash:free"
 ```
+
+## 可选 BGE 检索增强
+
+当前默认关闭，不影响现有规则匹配和离线 demo。上级部署 `BAAI/bge-m3` 与 `BAAI/bge-reranker-v2-m3` 后，可复制 `D:\Projects\EL\learning_platform\backend\.env.example` 为本地 `.env` 并填写服务地址：
+
+```env
+RETRIEVAL_PROVIDER=off
+EMBEDDING_BASE_URL=
+EMBEDDING_API_KEY=
+EMBEDDING_MODEL=BAAI/bge-m3
+RERANKER_BASE_URL=
+RERANKER_API_KEY=
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+```
+
+本地或内网部署通常可以不填 API Key；如果服务端要求鉴权，再填对应 key。验证命令：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\retrieval_probe.py --query "二重极限为什么不能只看一条路径" --top-k 8 --rerank-top-k 3 --ensure-sample
+```
+
+当 `RETRIEVAL_PROVIDER=off`、配置缺失或检索服务不可用时，系统会自动回退到当前关键词规则匹配。

@@ -25,6 +25,15 @@ def score_note_against_point(note_text: str, point: dict) -> tuple[int, str]:
 
 
 def find_best_match(note_text: str) -> tuple[int | None, str]:
+    # Optional BGE retrieval enhancement. It is deliberately best-effort: when
+    # the service is off, misconfigured, or temporarily unavailable, the stable
+    # keyword matcher below remains the hard fallback for offline demos.
+    from app.services.retrieval import find_best_match_by_retrieval
+
+    retrieval_match = find_best_match_by_retrieval(note_text)
+    if retrieval_match:
+        return retrieval_match
+
     with get_connection() as conn:
         points = rows_to_dicts(conn.execute("SELECT * FROM knowledge_points ORDER BY order_index").fetchall())
     if not points:
@@ -111,4 +120,3 @@ def reject_note(note_id: int) -> dict | None:
         )
         row = conn.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone()
     return row_to_dict(row)
-
