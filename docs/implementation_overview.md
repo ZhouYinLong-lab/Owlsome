@@ -10,7 +10,7 @@ text_archiver
 → Markdown cleanup and layout repair
 
 learning_platform
-→ Knowledge-base import, personal learning space, note review, progress, Q&A
+→ Knowledge-base import, personal learning space, contribution review, progress, Q&A
 ```
 
 The shared Markdown contract is Obsidian-compatible Markdown. The helper package is:
@@ -29,7 +29,24 @@ PDF
 → learning_platform import
 → structured knowledge points
 → public knowledge base / personal learning space
+→ optional contribution review
+→ community content merged into public knowledge points
 ```
+
+## Stage 3 Contribution APIs
+
+Personal uploads stay private by default. A learner must explicitly create a contribution before content can enter the public knowledge base.
+
+```text
+POST /api/contributions/from-personal-point
+GET  /api/contributions/pending
+GET  /api/contributions/{id}
+POST /api/contributions/{id}/approve
+POST /api/contributions/{id}/reject
+POST /api/contributions/{id}/request-revision
+```
+
+The first version supports `content_scope = whole_point`. Approved contributions are merged into public `content_units` with `source = community_contribution:{id}` so the frontend can label community content. Rejected and revision-requested contributions keep review records but do not modify the public knowledge base.
 
 ## Current LLM Boundaries
 
@@ -46,4 +63,3 @@ Documents should remain usable outside Owlsome:
 - Knowledge points can use `[[wikilinks]]`.
 - Important notes can use `> [!tip]` or `> [!warning]`.
 - Metadata is stored in YAML frontmatter.
-
