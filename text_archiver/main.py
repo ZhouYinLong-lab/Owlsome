@@ -22,12 +22,16 @@ from tqdm import tqdm
 
 from owlsome_core.obsidian import normalize_obsidian_markdown, title_from_path
 
-load_dotenv()
+# Load the repository-level env first, then the tool-local env.
+# This lets `python D:\Projects\EL\text_archiver\main.py ...` work even
+# when the command is launched from `D:\Projects\EL`.
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(Path(__file__).with_name(".env"), override=True)
 
 # ================= 默认配置 =================
 API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "deepseek/deepseek-v4-flash:free")
+MODEL_NAME = os.getenv("OPENROUTER_MODEL") or os.getenv("MODEL_NAME", "deepseek/deepseek-v4-flash:free")
 CHUNK_SIZE = 4000
 OVERLAP_SIZE = 1  # 以段落为单位，不再需要字符级重叠
 MAX_RETRIES = 3

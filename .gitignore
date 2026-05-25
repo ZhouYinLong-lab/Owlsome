@@ -28,7 +28,12 @@ mineru_tools/config.json
 # Secrets and local env
 .env
 *.env
+text_archiver/.env
 !.env.example
+
+# Generated text_archiver outputs
+text_archiver/*_formatted.md
+text_archiver/*.report.json
 
 # Large local archives
 *.zip
@@ -40,4 +45,3 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
