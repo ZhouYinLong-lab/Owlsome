@@ -2,12 +2,14 @@
 """Markdown 文本校对工具 - 基于 OpenRouter 大模型 API 的文档格式化，支持断点续传与 diff 对比."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import difflib
 import hashlib
 import json
 import os
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -92,6 +94,17 @@ def merge_chunks(formatted_chunks: list[str], overlap: int = 500) -> str:
 # ======================== API 调用 ========================
 
 
+def build_chunk_prompt(chunk_text: str, chunk_index: int, total_chunks: int, book_profile: str = "") -> str:
+    profile_text = ""
+    if book_profile.strip():
+        profile_text = f"\n\n本书整理规范如下，请优先遵守：\n{book_profile.strip()}\n"
+    return (
+        f"这是整个文档的第 {chunk_index + 1}/{total_chunks} 部分，"
+        f"请对其进行全面格式化，保持内容绝对完整。{profile_text}\n\n"
+        f"当前分块内容：\n\n{chunk_text}"
+    )
+
+
 def format_chunk_via_api(
     client: OpenAI,
     model: str,
@@ -99,11 +112,11 @@ def format_chunk_via_api(
     chunk_index: int,
     total_chunks: int,
     max_retries: int = MAX_RETRIES,
-) -> str:
-    user_prompt = (
-        f"这是整个文档的第 {chunk_index + 1}/{total_chunks} 部分，"
-        f"请对其进行全面格式化，保持内容绝对完整：\n\n{chunk_text}"
-    )
+    retry_delay: float = RETRY_DELAY,
+    book_profile: str = "",
+) -> tuple[str, dict]:
+    user_prompt = build_chunk_prompt(chunk_text, chunk_index, total_chunks, book_profile)
+    started = time.perf_counter()
 
     for attempt in range(max_retries):
         try:
@@ -116,17 +129,112 @@ def format_chunk_via_api(
                 temperature=0.1,
                 stream=False,
             )
-            return response.choices[0].message.content or ""
+            return response.choices[0].message.content or "", {
+                "status": "done",
+                "duration_seconds": round(time.perf_counter() - started, 3),
+                "attempts": attempt + 1,
+                "fallback_to_original": False,
+            }
         except Exception as e:
             if attempt < max_retries - 1:
                 tqdm.write(
                     f"  [重试] 分块 {chunk_index + 1} 失败 (尝试 {attempt + 1}/{max_retries}): {e}"
                 )
-                time.sleep(RETRY_DELAY * (attempt + 1))
+                time.sleep(retry_delay * (attempt + 1))
             else:
                 tqdm.write(f"  [错误] 分块 {chunk_index + 1} 最终失败: {e}")
-                return chunk_text
-    return chunk_text
+                return chunk_text, {
+                    "status": "failed",
+                    "duration_seconds": round(time.perf_counter() - started, 3),
+                    "attempts": attempt + 1,
+                    "fallback_to_original": True,
+                    "error": str(e),
+                }
+    return chunk_text, {
+        "status": "failed",
+        "duration_seconds": round(time.perf_counter() - started, 3),
+        "attempts": max_retries,
+        "fallback_to_original": True,
+    }
+
+
+def format_chunk_worker(
+    api_key: str,
+    base_url: str,
+    model: str,
+    chunk_text: str,
+    chunk_index: int,
+    total_chunks: int,
+    retry_delay: float,
+    book_profile: str,
+) -> tuple[int, str, dict]:
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    result, meta = format_chunk_via_api(
+        client,
+        model,
+        chunk_text,
+        chunk_index,
+        total_chunks,
+        retry_delay=retry_delay,
+        book_profile=book_profile,
+    )
+    return chunk_index, result, meta
+
+
+# ======================== 本书规范抽样 ========================
+
+
+def select_profile_sample_indices(chunks: list[str], sample_count: int) -> list[int]:
+    if not chunks:
+        return []
+    sample_count = max(1, min(sample_count, len(chunks)))
+    anchors = {0, len(chunks) // 2, len(chunks) - 1}
+    scored = []
+    for index, chunk in enumerate(chunks):
+        score = chunk.count("$") + chunk.count("\\[") * 2 + chunk.count("例") + chunk.count("习题") + chunk.count("#")
+        scored.append((score, index))
+    scored.sort(reverse=True)
+    for _score, index in scored:
+        anchors.add(index)
+        if len(anchors) >= sample_count:
+            break
+    return sorted(anchors)[:sample_count]
+
+
+def build_profile_prompt(samples: list[tuple[int, str]], total_chunks: int) -> str:
+    joined = "\n\n".join(
+        f"## 样本分块 {index + 1}/{total_chunks}\n\n{text[:2500]}"
+        for index, text in samples
+    )
+    return f"""请根据以下 Markdown 样本，生成“本书整理规范”。规范将用于后续批量清洗整本教材。
+
+请只输出 Markdown 规范正文，包含以下小节：
+- 标题层级规则
+- 定义/定理/例题/习题格式
+- LaTeX 公式保留规则
+- 图片与表格处理规则
+- Obsidian callout、wikilink、highlight 兼容规则
+- 需要人工复核的风险点
+
+样本如下：
+
+{joined}
+"""
+
+
+def generate_book_profile(client: OpenAI, model: str, chunks: list[str], sample_count: int) -> tuple[str, list[int]]:
+    sample_indices = select_profile_sample_indices(chunks, sample_count)
+    samples = [(index, chunks[index]) for index in sample_indices]
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "你是严谨的教材 Markdown 整理规范制定专家。"},
+            {"role": "user", "content": build_profile_prompt(samples, len(chunks))},
+        ],
+        temperature=0.1,
+        stream=False,
+    )
+    return response.choices[0].message.content or "", sample_indices
 
 
 # ======================== 断点续传 ========================
@@ -153,6 +261,7 @@ def save_checkpoint(
     file_hash: str,
     processed: dict[int, str],
     total: int,
+    meta: dict[int, dict] | None = None,
 ):
     cp_path = get_checkpoint_path(input_file)
     with open(cp_path, "w", encoding="utf-8") as f:
@@ -161,6 +270,7 @@ def save_checkpoint(
                 "file_hash": file_hash,
                 "total_chunks": total,
                 "processed": {str(k): v for k, v in processed.items()},
+                "meta": {str(k): v for k, v in (meta or {}).items()},
             },
             f,
             ensure_ascii=False,
@@ -172,6 +282,12 @@ def clear_checkpoint(input_file: str):
     cp_path = get_checkpoint_path(input_file)
     if os.path.exists(cp_path):
         os.remove(cp_path)
+
+
+def write_report(report_path: str, report: dict):
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    print(f"处理报告已保存至: {report_path}")
 
 
 # ======================== Diff 对比 ========================
@@ -254,6 +370,14 @@ def main():
     parser.add_argument("--obsidian", action="store_true", default=True, help="输出 Obsidian 兼容 Markdown（默认开启）")
     parser.add_argument("--no-obsidian", dest="obsidian", action="store_false", help="关闭 Obsidian 兼容后处理")
     parser.add_argument("--obsidian-title", default="", help="Frontmatter 标题（默认取输入文件名）")
+    parser.add_argument("--parallel", type=int, default=1, help="并发清洗 worker 数（默认: 1，保持串行）")
+    parser.add_argument("--auto-profile", action="store_true", help="抽样生成本书整理规范后再清洗")
+    parser.add_argument("--profile-samples", type=int, default=5, help="自动抽样生成规范的分块数量")
+    parser.add_argument("--book-profile", default="", help="使用已有本书整理规范文件")
+    parser.add_argument("--profile-output", default="", help="自动生成规范的保存路径（默认: <输入>_profile.md）")
+    parser.add_argument("--report", action="store_true", help="输出处理报告 JSON 到 <输出>.report.json")
+    parser.add_argument("--rate-limit-delay", type=float, default=RETRY_DELAY, help="API 失败后的基础退避秒数")
+    parser.add_argument("--dry-run", action="store_true", help="只显示分块、抽样和输出计划，不调用 API，不写 formatted 输出")
     args = parser.parse_args()
 
     # ------- 仅 diff 模式 -------
@@ -278,17 +402,15 @@ def main():
         return
 
     # ------- 参数解析 -------
-    api_key = args.api_key or API_KEY
-    if not api_key:
-        print("[错误] 请设置 OPENROUTER_API_KEY 环境变量或使用 -k 参数")
-        sys.exit(1)
-
     model = args.model or MODEL_NAME
     base_url = args.base_url or BASE_URL
     input_file = args.input
     output_file = args.output or f"{os.path.splitext(input_file)[0]}_formatted.md"
+    profile_output = args.profile_output or f"{os.path.splitext(input_file)[0]}_profile.md"
+    report_path = f"{output_file}.report.json"
     chunk_size = args.chunk_size
     overlap = args.overlap
+    parallel = max(1, args.parallel)
 
     if not os.path.exists(input_file):
         print(f"[错误] 找不到输入文件: {input_file}")
@@ -309,36 +431,102 @@ def main():
     unit = "段" if overlap else "无重叠"
     print(f"分块: {total} 块 (每块 ~{chunk_size:,} 字, 重叠: {unit})")
 
+    sample_indices = select_profile_sample_indices(chunks, args.profile_samples)
+    if args.dry_run:
+        print("\n[Dry Run] 不调用 API，不写 formatted 输出。")
+        print(f"输入: {input_file}")
+        print(f"输出: {output_file}")
+        print(f"报告: {report_path if args.report else '未启用'}")
+        print(f"并发: {parallel}")
+        print(f"自动规范: {'是' if args.auto_profile else '否'}")
+        print(f"规范输出: {profile_output if args.auto_profile else args.book_profile or '未启用'}")
+        print(f"抽样分块: {', '.join(str(index + 1) for index in sample_indices)}")
+        return
+
+    api_key = args.api_key or API_KEY
+    if not api_key:
+        print("[错误] 请设置 OPENROUTER_API_KEY 环境变量或使用 -k 参数")
+        sys.exit(1)
+
+    started_at = datetime.now()
+
     # ------- 断点续传 -------
     processed: dict[int, str] = {}
+    processed_meta: dict[int, dict] = {}
     start_from = 0
     if not args.no_resume:
         cp = load_checkpoint(input_file)
         if cp and cp.get("file_hash") == file_hash and cp.get("total_chunks") == total:
             processed = {int(k): v for k, v in cp.get("processed", {}).items()}
+            processed_meta = {int(k): v for k, v in cp.get("meta", {}).items()}
             start_from = len(processed)
             if start_from > 0:
                 print(f"[断点续传] 已恢复 {start_from}/{total} 块，从第 {start_from + 1} 块继续")
 
-    # ------- 调用 API -------
+    # ------- 本书规范 -------
     client = OpenAI(api_key=api_key, base_url=base_url)
-
-    pbar = tqdm(total=total, desc="云端格式化进度", unit="块", initial=start_from)
+    book_profile = ""
+    profile_mode = "none"
+    if args.book_profile:
+        with open(args.book_profile, "r", encoding="utf-8") as f:
+            book_profile = f.read()
+        profile_mode = "file"
+        print(f"使用本书规范: {args.book_profile}")
+    elif args.auto_profile:
+        print("正在抽样生成本书整理规范...")
+        book_profile, sample_indices = generate_book_profile(client, model, chunks, args.profile_samples)
+        with open(profile_output, "w", encoding="utf-8") as f:
+            f.write(book_profile)
+        profile_mode = "auto"
+        print(f"本书整理规范已保存至: {profile_output}")
 
     try:
-        for i in range(start_from, total):
-            result = format_chunk_via_api(client, model, chunks[i], i, total)
-            processed[i] = result
-            save_checkpoint(input_file, file_hash, processed, total)
-            pbar.update(1)
+        remaining = [index for index in range(total) if index not in processed]
+        pbar = tqdm(total=total, desc="云端格式化进度", unit="块", initial=len(processed))
+        if parallel == 1:
+            for i in remaining:
+                result, meta = format_chunk_via_api(
+                    client,
+                    model,
+                    chunks[i],
+                    i,
+                    total,
+                    retry_delay=args.rate_limit_delay,
+                    book_profile=book_profile,
+                )
+                processed[i] = result
+                processed_meta[i] = meta
+                save_checkpoint(input_file, file_hash, processed, total, processed_meta)
+                pbar.update(1)
+        else:
+            with ThreadPoolExecutor(max_workers=parallel) as executor:
+                futures = {
+                    executor.submit(
+                        format_chunk_worker,
+                        api_key,
+                        base_url,
+                        model,
+                        chunks[i],
+                        i,
+                        total,
+                        args.rate_limit_delay,
+                        book_profile,
+                    ): i
+                    for i in remaining
+                }
+                for future in as_completed(futures):
+                    index, result, meta = future.result()
+                    processed[index] = result
+                    processed_meta[index] = meta
+                    save_checkpoint(input_file, file_hash, processed, total, processed_meta)
+                    pbar.update(1)
+        pbar.close()
     except KeyboardInterrupt:
         pbar.close()
         done = len(processed)
         print(f"\n[已中断] 已处理 {done}/{total} 块，checkpoint 已保存。")
         print(f"下次运行将自动从第 {done + 1} 块继续。")
         sys.exit(0)
-
-    pbar.close()
 
     # ------- 合并 -------
     print("\n正在合并去重...")
@@ -364,6 +552,36 @@ def main():
     print(f"\n原始: {orig_len:,} 字符 → 格式化后: {fmt_len:,} 字符 "
           f"({'+' if fmt_len >= orig_len else ''}{fmt_len - orig_len:,})")
     print(f"输出文件: {output_file}")
+
+    finished_at = datetime.now()
+    if args.report:
+        metas = list(processed_meta.values())
+        fallback_chunks = sorted(index for index, meta in processed_meta.items() if meta.get("fallback_to_original"))
+        done_chunks = sum(1 for meta in metas if meta.get("status") == "done")
+        failed_chunks = sum(1 for meta in metas if meta.get("status") == "failed")
+        avg_seconds = round(sum(float(meta.get("duration_seconds", 0)) for meta in metas) / len(metas), 3) if metas else 0
+        write_report(
+            report_path,
+            {
+                "input": input_file,
+                "output": output_file,
+                "model": model,
+                "parallel": parallel,
+                "chunk_size": chunk_size,
+                "total_chunks": total,
+                "profile_mode": profile_mode,
+                "profile_output": profile_output if profile_mode == "auto" else args.book_profile,
+                "profile_sample_chunks": [index + 1 for index in sample_indices],
+                "started_at": started_at.isoformat(timespec="seconds"),
+                "finished_at": finished_at.isoformat(timespec="seconds"),
+                "duration_seconds": round((finished_at - started_at).total_seconds(), 3),
+                "done_chunks": done_chunks,
+                "failed_chunks": failed_chunks,
+                "fallback_chunks": fallback_chunks,
+                "average_chunk_seconds": avg_seconds,
+                "chunk_meta": {str(k): v for k, v in sorted(processed_meta.items())},
+            },
+        )
 
     # ------- Diff -------
     if args.diff or args.show_diff:

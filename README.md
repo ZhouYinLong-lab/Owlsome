@@ -157,6 +157,27 @@ cd D:\Projects\EL\text_archiver
 python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --obsidian
 ```
 
+无 API Key 时可先 dry-run 验证分块和抽样：
+
+```powershell
+cd D:\Projects\EL
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --dry-run --parallel 4 --auto-profile --profile-samples 3 --report
+```
+
+并行清洗长文档：
+
+```powershell
+cd D:\Projects\EL\text_archiver
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 4 --auto-profile --profile-samples 5 --report
+```
+
+如果 API 触发速率限制，可降低并发并增大退避时间：
+
+```powershell
+cd D:\Projects\EL\text_archiver
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 2 --rate-limit-delay 5 --report
+```
+
 无 API Key 时，学习平台 demo 仍可完整演示；`text_archiver` 的在线清洗属于增强能力。
 
 ### 5. 安装 mineru_tools 依赖
@@ -259,7 +280,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 - PDF 转 Markdown 链路标准化。
 - Markdown 清洗与排版增强。
-- `text_archiver` 抽样规范与分段并发处理。
+- `text_archiver` 已支持抽样生成本书规范、分段并发处理和 report 输出。
 - Obsidian callout、wikilink、高亮和 LaTeX 渲染稳定。
 
 ### Stage 3：私人内容的可选贡献与审核闭环
@@ -350,5 +371,5 @@ git status --short --branch
 1. 完善贡献内容的编辑与二次修改流程。
 2. 为贡献审核增加更细的目标知识点人工改选能力。
 3. 接入 embedding / rerank，提高贡献匹配准确率。
-4. 设计 `text_archiver` 抽样规范与分段并发处理方案。
+4. 用真实长教材样例压测 `text_archiver --parallel`，记录速率限制和加速比。
 5. 准备题目-知识点挂钩的人工标注样例集。

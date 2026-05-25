@@ -1,253 +1,166 @@
-Markdown 文件清洗完整流程
+# text_archiver
 
-  一、整体架构
+`text_archiver` 是 Owlsome Learning 的 Markdown 清洗工具，用于修复 PDF 转 Markdown 后常见的断行、标题层级、列表、公式和 Obsidian 格式问题。
 
-  该项目是一个基于大模型 API 的 Markdown 文档格式化校对工具，核心思路是：将大型 Markdown 文件智能分块 → 逐块发送给云端 LLM 进行格式化 → 合并去重 → Obsidian 兼容性后处理 →
-  输出。整个流程由一个主入口文件和 3 个外部依赖模块协同完成：
+当前版本支持：
 
-  main.py (主控)
-    ├── openai SDK      → 调用 OpenRouter API (DeepSeek 模型)
-    ├── tqdm            → 进度条显示
-    ├── python-dotenv   → 加载 .env 环境配置
-    ├── colorama        → 终端 diff 彩色输出
-    └── owlsome_core.obsidian → Obsidian 兼容性后处理
+- 串行清洗，保持旧行为兼容。
+- 分段并发清洗。
+- 自动抽样生成“本书整理规范”。
+- 使用已有整理规范清洗。
+- 断点续传。
+- diff 输出。
+- Obsidian-compatible 后处理。
+- JSON 处理报告。
 
-  二、各模块功能详解
+## 安装依赖
 
-  1. main.py — 主控引擎 (386 行)
+```powershell
+cd D:\Projects\EL\text_archiver
+python -m pip install -r D:\Projects\EL\text_archiver\requirements.txt
+```
 
-  承担 6 大职责：参数解析、分块、API 调度、断点续传、合并去重、diff 生成。
+复制环境变量：
 
-  2. owlsome_core/obsidian.py — Obsidian 兼容层 (116 行)
+```powershell
+cd D:\Projects\EL\text_archiver
+Copy-Item -Path D:\Projects\EL\text_archiver\.env.example -Destination D:\Projects\EL\text_archiver\.env
+```
 
-  独立的纯函数库，负责对格式化后的文本做 5 项后处理，不依赖网络。
+在 `.env` 中配置：
 
-  3. 外部依赖
+```text
+OPENROUTER_API_KEY=
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+MODEL_NAME=deepseek/deepseek-v4-flash:free
+```
 
-  ┌───────────────┬───────────────────────────────────┐
-  │     依赖      │               作用                │
-  ├───────────────┼───────────────────────────────────┤
-  │ openai SDK    │ 兼容 OpenRouter API 调用          │
-  ├───────────────┼───────────────────────────────────┤
-  │ tqdm          │ 终端进度条                        │
-  ├───────────────┼───────────────────────────────────┤
-  │ python-dotenv │ 加载 .env 中的 API Key / 模型配置 │
-  ├───────────────┼───────────────────────────────────┤
-  │ colorama      │ diff 输出的红/绿/青色着色         │
-  └───────────────┴───────────────────────────────────┘
+## 无 API Key 验证
 
-  ---
-  三、完整数据处理步骤
+`--dry-run` 不调用 API，也不写 formatted 输出：
 
-  步骤 1：参数解析与配置加载 (main.py:238-257)
+```powershell
+cd D:\Projects\EL
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --dry-run --parallel 4 --auto-profile --profile-samples 3 --report
+```
 
-  .env 文件 → 环境变量 (API_KEY, BASE_URL, MODEL_NAME)
-       ↓ 可被 CLI 参数覆盖
-  argparse 解析 (--model, --api-key, --chunk-size, --overlap, --obsidian 等)
+输出会显示：
 
-  关键默认值：
-  - 模型: deepseek/deepseek-v4-flash:free
-  - 分块大小: 4000 字符/块
-  - 重叠: 1 段 (段落级锚点)
-  - 最大重试: 3 次，退避延迟递增
+- 输入文件
+- 输出路径
+- chunk 数量
+- 并发数
+- 是否自动生成规范
+- 抽样 chunk 编号
 
-  步骤 2：文件读取与哈希 (main.py:297-300)
+## 串行清洗
 
-  original_text = f.read()
-  file_hash = hashlib.sha256(original_text.encode()).hexdigest()
+```powershell
+cd D:\Projects\EL\text_archiver
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 1 --obsidian --report
+```
 
-  SHA256 哈希用于后续断点续传校验——如果原始文件内容变了，之前的 checkpoint 自动失效。
+`--parallel 1` 保持旧版串行逻辑。
 
-  步骤 3：智能分块 (main.py:48-74, chunk_markdown)
+## 并发清洗
 
-  这不是简单的按字符数切割，而是段落感知分块：
+```powershell
+cd D:\Projects\EL\text_archiver
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 4 --obsidian --report
+```
 
-  输入文本
-    ↓ split("\n\n") 按空行切为段落数组
-    ↓ 逐个累加段落，当累计长度 > chunk_size 时：
-    ↓   将当前缓冲区作为一个 chunk 输出
-    ↓   将最后一个段落作为"重叠锚点"保留到下一个 chunk
-    ↓ 最后一个缓冲区作为最终 chunk
+说明：
 
-  重叠机制的设计意图：两个相邻 chunk 共享最后一个段落，这样合并时可以通过匹配锚点文本精确去重，避免 API 在 chunk 边界产生重复内容。
+- 多个 chunk 并发调用 OpenAI-compatible API。
+- 输出时仍按原始 chunk 顺序合并。
+- 每个 chunk 的状态会写入 checkpoint 和 report。
+- 如果 API 有速率限制，降低 `--parallel` 或增大 `--rate-limit-delay`。
 
-  步骤 4：断点续传 (main.py:135-168, 312-321)
+## 自动生成本书整理规范
 
-  这是生产级可靠性的关键设计：
+```powershell
+cd D:\Projects\EL\text_archiver
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --auto-profile --profile-samples 5 --parallel 4 --report
+```
 
-  checkpoint 文件: <输入文件>.checkpoint.json
-  结构:
-  {
-    "file_hash": "sha256...",      // 校验原始文件是否变化
-    "total_chunks": 15,             // 总块数
-    "processed": {                  // 已完成的块: 块索引 → 格式化结果
-      "0": "...",
-      "1": "...",
-      ...
-    }
-  }
+工具会从开头、中部、结尾和公式/标题密集片段抽样，生成：
 
-  流程：
-  1. 读取 checkpoint 文件
-  2. 校验 file_hash 和 total_chunks 是否与当前一致
-  3. 一致则从 start_from = len(processed) 继续
-  4. 每处理完一个 chunk 立即保存 checkpoint
-  5. 全部完成后自动清除 checkpoint
-  6. Ctrl+C 中断时优雅保存状态，下次自动恢复
+```text
+<输入文件>_profile.md
+```
 
-  步骤 5：API 格式化调用 (main.py:95-129, 323-341)
+后续每个 chunk 的清洗 prompt 都会带上这份“本书整理规范”。
 
-  每个 chunk 通过 OpenRouter API 发送给 DeepSeek 模型处理：
+## 使用已有整理规范
 
-  for each chunk:
-    ┌─ 构造 user_prompt: "第 X/N 部分，请格式化..."
-    ├─ 携带 SYSTEM_PROMPT (6条排版规则)
-    ├─ call API (temperature=0.1, max_retries=3)
-    │   ├─ 成功 → 保存结果到 processed[i]
-    │   ├─ 失败 → 指数退避重试 (2s, 4s, 6s)
-    │   └─ 最终失败 → 保留原文 (降级策略)
-    └─ 保存 checkpoint + 更新进度条
+```powershell
+cd D:\Projects\EL\text_archiver
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --book-profile D:\Projects\EL\text_archiver\sample_input_profile.md --parallel 4 --report
+```
 
-  SYSTEM_PROMPT 的 6 条清洗规则 (第 35-43 行)：
+适合先人工校正规范，再批量清洗整本书。
 
-  ┌──────────────────┬─────────────────────────────────────────────────────────────────────────────────────────┐
-  │       规则       │                                          说明                                           │
-  ├──────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
-  │ 1. 语法修正      │ 不规范列表、加粗、标题层级                                                              │
-  ├──────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
-  │ 2. 中英文混排    │ 中文与英文/数字间自动加空格                                                             │
-  ├──────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
-  │ 3. PDF 断行修复  │ 恢复因 PDF 转换导致的错位段落                                                           │
-  ├──────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
-  │ 4. 内容完整性    │ 绝对不能漏删改原文任何字句                                                              │
-  ├──────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
-  │ 5. Obsidian 兼容 │ 保留 YAML frontmatter、[[双链]]、> [!note] callout、==高亮==、任务列表、LaTeX、图片链接 │
-  ├──────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
-  │ 6. 纯文本输出    │ 不输出任何解释、前言或 markdown 代码块标记                                              │
-  └──────────────────┴─────────────────────────────────────────────────────────────────────────────────────────┘
+## Report 字段
 
-  步骤 6：合并去重 (main.py:77-89, 344-346, merge_chunks)
+启用 `--report` 后，会生成：
 
-  各 chunk 的 API 返回结果需要合并回完整文档：
+```text
+<输出文件>.report.json
+```
 
-  formatted_chunks = [chunk0, chunk1, chunk2, ...]
-    ↓
-  final_text = chunk[0]
-  for each subsequent chunk:
-    取当前 chunk 前 150 字符作为锚点
-    在 final_text 中反向查找该锚点
-    ├─ 找到 → 从锚点位置拼接 (精确去重)
-    └─ 未找到 → 用 \n\n 直接追加 (降级策略)
+核心字段：
 
-  步骤 7：Obsidian 兼容性后处理 (obsidian.py:82-111, normalize_obsidian_markdown)
+| 字段 | 说明 |
+|---|---|
+| `input` | 输入文件 |
+| `output` | 输出文件 |
+| `model` | 使用模型 |
+| `parallel` | 并发数 |
+| `chunk_size` | 分块大小 |
+| `total_chunks` | 分块总数 |
+| `profile_mode` | `none` / `auto` / `file` |
+| `profile_output` | profile 文件路径 |
+| `duration_seconds` | 总耗时 |
+| `done_chunks` | 成功 chunk 数 |
+| `failed_chunks` | 失败 chunk 数 |
+| `fallback_chunks` | 降级为原文的 chunk |
+| `average_chunk_seconds` | 平均 chunk 耗时 |
+| `chunk_meta` | 每个 chunk 的状态、耗时、重试次数 |
 
-  这是独立的后处理管线，分 5 个子步骤：
+## 断点续传
 
-  输入文本
-    ↓ ① 统一换行符: \r\n → \n，去除 BOM，首尾去空白
-    ↓ ② HTML details → Obsidian callout 转换
-    │      <details><summary>标题</summary>内容</details>
-    │      → > [!info]- 标题
-    │        > 内容行1
-    │        > 内容行2
-    ↓ ③ 图片路径规范化: Windows 反斜杠 → 正斜杠
-    ↓ ④ 多余空行压缩: 3+ 个连续空行 → 2 个空行
-    ↓ ⑤ 补充 YAML frontmatter (如不存在):
-    │      ---
-    │      type: "cleaned_markdown"
-    │      title: "文件名"
-    │      source: "原始路径"
-    │      tags: ["owlsome", "archived-markdown"]
-    │      aliases: []
-    │      obsidian_compatible: true
-    │      created_at: "2026-05-25T..."
-    │      ---
-    ↓
-  输出文本 (以 \n 结尾)
+处理中断时会保留：
 
-  步骤 8：输出与统计 (main.py:356-366)
+```text
+<输入文件>.checkpoint.json
+```
 
-  - 写入 <原名>_formatted.md
-  - 打印字符数变化：原始: X 字符 → 格式化后: Y 字符 (±Δ)
-  - 自动清除 checkpoint
+重新运行相同命令时，会复用已完成 chunk。
 
-  步骤 9：Diff 对比（可选）(main.py:180-230, 369-382)
+全部完成后 checkpoint 会自动删除。
 
-  通过 --diff 或 --show-diff 触发：
+## 常用参数
 
-  build_diff():
-    difflib.unified_diff(原始行, 格式化行, context_lines=3)
-    → 标准 unified diff 格式文本
+| 参数 | 默认值 | 说明 |
+|---|---:|---|
+| `--parallel` | `1` | 并发 worker 数 |
+| `--auto-profile` | 关闭 | 自动抽样生成本书规范 |
+| `--profile-samples` | `5` | 抽样 chunk 数 |
+| `--book-profile` | 空 | 使用已有本书规范 |
+| `--profile-output` | `<输入>_profile.md` | 保存自动规范 |
+| `--report` | 关闭 | 输出 JSON 报告 |
+| `--rate-limit-delay` | `2` | API 失败后的基础退避秒数 |
+| `--dry-run` | 关闭 | 只显示计划，不调用 API |
+| `--diff` | 关闭 | 保存 unified diff |
+| `--show-diff` | 关闭 | 终端显示 diff |
+| `--no-obsidian` | 关闭 | 禁用 Obsidian 后处理 |
 
-  --diff:     写入 <输出>.diff 文件
-  --show-diff: 终端彩色输出 (红=删除, 绿=新增, 青=位置标记)
-  --diff-only: 跳过 API，只对已有文件做 diff 对比
+## 速率限制建议
 
-  ---
-  四、完整数据流图
+如果 API 报 429、超时或频繁失败：
 
-  原始 .md 文件
-      │
-      ▼
-  [参数解析] ◄── .env / CLI args
-      │
-      ▼
-  [读取 + SHA256 哈希]
-      │
-      ▼
-  [段落感知分块] ── chunk_size=4000, overlap=1段
-      │
-      ▼
-  [断点续传检查] ◄── .checkpoint.json
-      │
-      ▼
-  ┌─────────────────────────┐
-  │  for each chunk:        │
-  │    API 调用 (OpenRouter) │── 重试3次, 降级保留原文
-  │    保存 checkpoint       │
-  └──────────┬──────────────┘
-             ▼
-  [合并去重] ── 锚点匹配 (150字符前缀)
-             ▼
-  [Obsidian 后处理]
-    ├─ 换行符规范化
-    ├─ HTML→Callout 转换
-    ├─ 图片路径修正
-    ├─ 空行压缩
-    └─ Frontmatter 补充
-             ▼
-  [写入 _formatted.md]
-             ▼
-  [可选: Diff 输出] ── .diff 文件 / 终端彩色显示
-             ▼
-  [清除 checkpoint]
+```powershell
+python D:\Projects\EL\text_archiver\main.py input.md --parallel 2 --rate-limit-delay 5 --report
+```
 
-  五、异常处理机制
-
-  ┌─────────────────┬────────────────────────────────┬───────────────────────────────────┐
-  │      层级       │              机制              │               行为                │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ 网络/API 错误   │ 3 次重试 + 指数退避 (2s→4s→6s) │ 最终失败保留原文 chunk            │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ 用户中断        │ KeyboardInterrupt 捕获         │ 保存 checkpoint，提示下次续传起点 │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ 文件不存在      │ 启动时检查                     │ 打印错误并 sys.exit(1)            │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ API Key 缺失    │ 启动时检查                     │ 打印提示并退出                    │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ Checkpoint 损坏 │ json.JSONDecodeError 捕获      │ 返回 None，从头处理               │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ 原文被修改      │ file_hash 不匹配               │ checkpoint 自动失效               │
-  ├─────────────────┼────────────────────────────────┼───────────────────────────────────┤
-  │ 锚点匹配失败    │ rfind 返回 -1                  │ 降级为 \n\n 直接拼接              │
-  └─────────────────┴────────────────────────────────┴───────────────────────────────────┘
-
-  六、质量验证方法
-
-  工具提供了三重验证手段：
-
-  1. 字符数统计 — 输出时打印原始/格式化后的字符数差异，大幅偏差可能意味着内容丢失
-  2. Unified Diff — 通过 --show-diff 在终端逐行对比，红色删除/绿色新增一目了然
-  3. Diff 文件归档 — --diff 生成 .diff 文件，可用任何 diff 工具审阅，也可事后用 --diff-only 重新生成
-
-  配合 SYSTEM_PROMPT 中"绝对不能漏掉、删减、篡改或概括原文中的任何一句话和任何一个字"的硬约束，LLM 在格式化时会以内容保真度为最高优先级。
+建议从 `--parallel 2` 开始，再逐步调高。

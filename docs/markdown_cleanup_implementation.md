@@ -25,12 +25,13 @@ Clean Markdown generated from PDF parsing while preserving source content and ma
 ```text
 Raw Markdown
 → paragraph-based chunking
-→ LLM cleanup per chunk
-→ checkpoint save after every chunk
+→ optional sample-based book profile generation
+→ LLM cleanup per chunk, serial or parallel
+→ checkpoint save after every finished chunk
 → chunk merge and de-duplication
 → Obsidian-compatible normalization
 → formatted Markdown output
-→ optional diff output
+→ optional diff and report output
 ```
 
 ## Core Algorithm
@@ -41,7 +42,25 @@ Raw Markdown
 
 The final paragraph of a chunk can be reused as an overlap anchor for the next chunk.
 
-### 2. LLM cleanup
+### 2. Optional book profile
+
+For long textbooks, `text_archiver` can sample representative chunks and ask the model to produce a book-specific cleanup profile.
+
+The profile covers heading hierarchy, example/exercise formatting, formula preservation, image handling, Obsidian syntax rules, and manual review risks.
+
+Generate a profile automatically:
+
+```powershell
+python D:\Projects\EL\text_archiver\main.py input.md --auto-profile --profile-samples 5 --parallel 4 --report
+```
+
+Reuse an existing profile:
+
+```powershell
+python D:\Projects\EL\text_archiver\main.py input.md --book-profile input_profile.md --parallel 4 --report
+```
+
+### 3. LLM cleanup
 
 Each chunk is sent to an OpenAI-compatible chat completion endpoint with a strict system prompt:
 
@@ -59,7 +78,19 @@ OPENROUTER_BASE_URL
 MODEL_NAME
 ```
 
-### 3. Checkpointing
+### 4. Parallel cleanup
+
+`--parallel N` enables thread-based parallel processing.
+
+- `--parallel 1` keeps the original serial behavior.
+- `--parallel N`, where `N > 1`, creates independent workers.
+- Each worker creates its own OpenAI-compatible client.
+- The main thread saves checkpoint and report metadata when chunks finish.
+- Final merge always sorts by chunk index, not completion order.
+
+If the API rate limits requests, reduce `--parallel` or increase `--rate-limit-delay`.
+
+### 5. Checkpointing
 
 After each chunk, the result is saved to:
 
@@ -69,11 +100,27 @@ After each chunk, the result is saved to:
 
 This allows interrupted jobs to resume without reprocessing completed chunks.
 
-### 4. Merge
+The checkpoint remains compatible with the old shape and may include per-chunk metadata:
+
+```json
+{
+  "processed": {"0": "..."},
+  "meta": {
+    "0": {
+      "status": "done",
+      "duration_seconds": 3.2,
+      "attempts": 1,
+      "fallback_to_original": false
+    }
+  }
+}
+```
+
+### 6. Merge
 
 `merge_chunks` uses a short anchor from the next chunk to remove duplicated overlap content.
 
-### 5. Obsidian normalization
+### 7. Obsidian normalization
 
 By default, `text_archiver` now applies:
 
@@ -98,12 +145,13 @@ python main.py input.md --no-obsidian
 ```text
 input.md
 → chunks[]
-→ OpenRouter / LLM
+→ optional book profile
+→ OpenRouter / LLM, serial or parallel
 → processed chunk checkpoint
 → merged Markdown
 → Obsidian frontmatter + callout normalization
 → output.md
-→ optional output.md.diff
+→ optional output.md.diff / output.md.report.json
 ```
 
 ## LLM Usage
@@ -133,6 +181,24 @@ Important options:
 - `--obsidian`: enable Obsidian normalization, default.
 - `--no-obsidian`: disable Obsidian post-processing.
 - `--obsidian-title`: override frontmatter title.
+- `--parallel`: parallel worker count, default 1.
+- `--auto-profile`: sample chunks and generate a book-specific profile.
+- `--profile-samples`: number of sampled chunks.
+- `--book-profile`: reuse an existing profile.
+- `--profile-output`: path for generated profile.
+- `--report`: save processing report JSON.
+- `--rate-limit-delay`: base retry delay.
+- `--dry-run`: show chunks and sample plan without API calls.
+
+## Report Output
+
+When `--report` is set, the tool writes:
+
+```text
+<output>.report.json
+```
+
+The report includes input/output paths, model, parallelism, chunk count, profile mode, runtime, failed/fallback chunks, and per-chunk metadata.
 
 ## Module Boundaries
 
@@ -146,4 +212,3 @@ Important options:
 - Obsidian post-processing is deterministic and conservative.
 - Checkpoints should remain untracked.
 - `.env` files must remain untracked.
-
