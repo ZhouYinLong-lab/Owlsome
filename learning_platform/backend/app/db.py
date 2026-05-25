@@ -139,6 +139,63 @@ def init_db() -> None:
                 FOREIGN KEY(personal_knowledge_point_id) REFERENCES personal_knowledge_points(id) ON DELETE CASCADE,
                 UNIQUE(space_id, personal_knowledge_point_id)
             );
+
+            CREATE TABLE IF NOT EXISTS contributors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                handle TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS contributions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                contributor_id INTEGER NOT NULL,
+                source_space_id INTEGER,
+                source_personal_point_id INTEGER,
+                recommended_knowledge_point_id INTEGER,
+                target_knowledge_point_id INTEGER,
+                contribution_type TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                content_scope TEXT NOT NULL DEFAULT 'whole_point',
+                status TEXT NOT NULL DEFAULT 'pending',
+                match_reason TEXT NOT NULL DEFAULT '',
+                duplicate_risk TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TEXT,
+                FOREIGN KEY(contributor_id) REFERENCES contributors(id) ON DELETE CASCADE,
+                FOREIGN KEY(source_space_id) REFERENCES personal_spaces(id) ON DELETE SET NULL,
+                FOREIGN KEY(source_personal_point_id) REFERENCES personal_knowledge_points(id) ON DELETE SET NULL,
+                FOREIGN KEY(recommended_knowledge_point_id) REFERENCES knowledge_points(id) ON DELETE SET NULL,
+                FOREIGN KEY(target_knowledge_point_id) REFERENCES knowledge_points(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS contribution_units (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                contribution_id INTEGER NOT NULL,
+                unit_type TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                content TEXT NOT NULL,
+                order_index INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(contribution_id) REFERENCES contributions(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS contribution_reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                contribution_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                reviewer TEXT NOT NULL DEFAULT 'local_reviewer',
+                comment TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(contribution_id) REFERENCES contributions(id) ON DELETE CASCADE
+            );
+            """
+        )
+
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO contributors (handle, display_name)
+            VALUES ('local_demo_user', '本地演示用户')
             """
         )
 

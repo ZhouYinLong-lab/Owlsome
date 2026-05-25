@@ -97,3 +97,16 @@ class PersonalProgressUpdate(BaseModel):
 class PersonalQARequest(BaseModel):
     personal_knowledge_point_id: int
     question: str = Field(min_length=2)
+
+
+class ContributionCreateFromPersonalPoint(BaseModel):
+    space_id: int
+    personal_knowledge_point_id: int
+    contribution_type: str = Field(pattern="^(note|explanation|example|exercise|mistake|faq)$")
+    title: str = Field(default="", max_length=160)
+    content_scope: str = Field(default="whole_point", pattern="^whole_point$")
+
+
+class ContributionReviewRequest(BaseModel):
+    comment: str = Field(default="", max_length=500)
+    target_knowledge_point_id: int | None = None

@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import get_connection, init_db, row_to_dict, rows_to_dicts
 from app.models import (
+    ContributionCreateFromPersonalPoint,
+    ContributionReviewRequest,
     ImportResult,
     NoteCreate,
     PersonalProgressUpdate,
@@ -13,6 +15,7 @@ from app.models import (
     QAResponse,
 )
 from app.pipelines.importer import import_sample
+from app.services import contributions
 from app.services.notes import approve_note, create_note, pending_notes, reject_note
 from app.services.personal import (
     create_space_from_markdown_bytes,
@@ -64,6 +67,15 @@ def stats() -> dict:
             "approved_notes": conn.execute("SELECT COUNT(*) AS count FROM notes WHERE status = 'approved'").fetchone()["count"],
             "qa_logs": conn.execute("SELECT COUNT(*) AS count FROM qa_logs").fetchone()["count"],
             "personal_spaces": conn.execute("SELECT COUNT(*) AS count FROM personal_spaces").fetchone()["count"],
+            "pending_contributions": conn.execute(
+                "SELECT COUNT(*) AS count FROM contributions WHERE status = 'pending'"
+            ).fetchone()["count"],
+            "approved_contributions": conn.execute(
+                "SELECT COUNT(*) AS count FROM contributions WHERE status = 'approved'"
+            ).fetchone()["count"],
+            "community_content_units": conn.execute(
+                "SELECT COUNT(*) AS count FROM content_units WHERE source LIKE 'community_contribution:%'"
+            ).fetchone()["count"],
         }
 
 
@@ -214,3 +226,57 @@ def personal_qa_api(space_id: int, payload: PersonalQARequest) -> dict:
         return answer_personal_question(space_id, payload.personal_knowledge_point_id, payload.question)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/contributions/from-personal-point")
+def create_contribution_api(payload: ContributionCreateFromPersonalPoint) -> dict:
+    try:
+        return contributions.create_from_personal_point(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/contributions/pending")
+def pending_contributions_api() -> list[dict]:
+    return contributions.list_pending()
+
+
+@app.get("/api/contributions/{contribution_id}")
+def contribution_detail_api(contribution_id: int) -> dict:
+    contribution = contributions.get_contribution(contribution_id)
+    if not contribution:
+        raise HTTPException(status_code=404, detail="贡献不存在")
+    return contribution
+
+
+@app.post("/api/contributions/{contribution_id}/approve")
+def approve_contribution_api(contribution_id: int, payload: ContributionReviewRequest) -> dict:
+    try:
+        contribution = contributions.approve(contribution_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not contribution:
+        raise HTTPException(status_code=404, detail="贡献不存在")
+    return contribution
+
+
+@app.post("/api/contributions/{contribution_id}/reject")
+def reject_contribution_api(contribution_id: int, payload: ContributionReviewRequest) -> dict:
+    try:
+        contribution = contributions.reject(contribution_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not contribution:
+        raise HTTPException(status_code=404, detail="贡献不存在")
+    return contribution
+
+
+@app.post("/api/contributions/{contribution_id}/request-revision")
+def request_revision_contribution_api(contribution_id: int, payload: ContributionReviewRequest) -> dict:
+    try:
+        contribution = contributions.request_revision(contribution_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not contribution:
+        raise HTTPException(status_code=404, detail="贡献不存在")
+    return contribution
