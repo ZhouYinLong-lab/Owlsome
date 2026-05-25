@@ -107,3 +107,90 @@ python D:\Projects\EL\text_archiver\main.py $p --parallel 4 --auto-profile --pro
 $p = 'D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full.md'
 python D:\Projects\EL\text_archiver\main.py $p --parallel 2 --rate-limit-delay 5 --report
 ```
+
+## 2026-05-25 sample_input 真实 API 单块测试
+
+### 测试目标
+
+验证配置 `text_archiver\.env` 后，小样本能否真实调用 OpenAI-compatible API，并生成 `formatted.md` 与 `report.json`。
+
+### 输入文件
+
+```text
+D:\Projects\EL\text_archiver\sample_input.md
+```
+
+### 执行命令
+
+第一次在默认沙箱环境执行：
+
+```powershell
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 1 --report
+```
+
+结果为 `Connection error`，判断可能与沙箱网络限制有关。
+
+第二次在允许网络访问的环境中执行：
+
+```powershell
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 1 --report --no-resume
+```
+
+### 环境检查
+
+未记录或暴露 API Key 原文，仅确认变量存在性：
+
+| 变量 | 状态 |
+|---|---|
+| `OPENROUTER_API_KEY` | 已配置，长度 35 |
+| `OPENROUTER_BASE_URL` | 已配置，值为 `https://openrouter.ai/api/v1` |
+| `OPENROUTER_MODEL` | 已配置，值为 `deepseek/deepseek-v4` |
+
+### 关键输出
+
+```text
+输入文件: D:\Projects\EL\text_archiver\sample_input.md (239 字符)
+模型: deepseek/deepseek-v4
+API: https://openrouter.ai/api/v1
+分块: 1 块 (每块 ~4,000 字, 重叠: 段)
+
+[重试] 分块 1 失败 (尝试 1/3): Error code: 401 - {'error': {'message': 'Missing Authentication header', 'code': 401}}
+[重试] 分块 1 失败 (尝试 2/3): Error code: 401 - {'error': {'message': 'Missing Authentication header', 'code': 401}}
+[错误] 分块 1 最终失败: Error code: 401 - {'error': {'message': 'Missing Authentication header', 'code': 401}}
+
+输出文件: D:\Projects\EL\text_archiver\sample_input_formatted.md
+处理报告已保存至: D:\Projects\EL\text_archiver\sample_input_formatted.md.report.json
+```
+
+### Report 摘要
+
+| 字段 | 值 |
+|---|---|
+| `model` | `deepseek/deepseek-v4` |
+| `parallel` | 1 |
+| `total_chunks` | 1 |
+| `done_chunks` | 0 |
+| `failed_chunks` | 1 |
+| `fallback_chunks` | `[0]` |
+| `duration_seconds` | 9.267 |
+| `fallback_to_original` | `true` |
+
+### 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| `.env` 能被 `main.py` 从项目根目录加载 | 通过 |
+| 模型名能从 `OPENROUTER_MODEL` 读取 | 通过 |
+| API 请求能发出到 OpenRouter | 通过，返回 401 |
+| 失败后重试 3 次 | 通过 |
+| 失败后保留原文 fallback | 通过 |
+| report 能记录失败原因 | 通过 |
+| 真实 LLM 清洗成功 | 未通过，401 `Missing Authentication header` |
+
+### 初步判断
+
+当前问题不在分块、并发、checkpoint 或 report 逻辑，而在 API 鉴权配置。建议下一步检查：
+
+1. `OPENROUTER_API_KEY` 是否为 OpenRouter 平台生成的 key，而不是其他平台的 DeepSeek key。
+2. 若使用 DeepSeek 官方 key，需要同步修改 `OPENROUTER_BASE_URL` 和模型名为对应平台的 OpenAI-compatible 配置。
+3. 确认 `.env` 中 `OPENROUTER_API_KEY=` 后没有多余中文说明、占位符或不可见字符。
