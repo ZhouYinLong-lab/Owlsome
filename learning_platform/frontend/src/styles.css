@@ -155,7 +155,7 @@ h1 {
 
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
 }
 
@@ -481,7 +481,8 @@ h1 {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid #cdd8ce;
   border-radius: 8px;
@@ -646,6 +647,25 @@ textarea {
   margin-top: 16px;
 }
 
+.contributionForm {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #dfe6df;
+  background: #fbfcfa;
+}
+
+.contributionForm p {
+  color: #69786d;
+  font-size: 13px;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .note {
   border-top: 1px solid #d4ddd5;
   padding-top: 10px;
@@ -657,6 +677,11 @@ textarea {
   gap: 12px;
 }
 
+.reviewGroup {
+  display: grid;
+  gap: 10px;
+}
+
 .reviewItem {
   display: flex;
   justify-content: space-between;
@@ -664,10 +689,30 @@ textarea {
   padding: 16px;
 }
 
+.reviewItem small {
+  display: block;
+  color: #69786d;
+  margin-top: 5px;
+}
+
 .reviewActions {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+}
+
+.contributionReview {
+  border-left: 5px solid #496f61;
+}
+
+.communityBadge {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff7df;
+  color: #6e5421;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .pipelineGrid {

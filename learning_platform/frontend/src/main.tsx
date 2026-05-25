@@ -35,6 +35,9 @@ type Stats = {
   approved_notes: number;
   qa_logs: number;
   personal_spaces: number;
+  pending_contributions: number;
+  approved_contributions: number;
+  community_content_units: number;
 };
 
 type KnowledgePoint = {
@@ -114,6 +117,28 @@ type PersonalPoint = {
 
 type PersonalSpaceDetail = PersonalSpace & {
   points: PersonalPoint[];
+};
+
+type Contribution = {
+  id: number;
+  source_space_id?: number | null;
+  source_personal_point_id?: number | null;
+  recommended_knowledge_point_id?: number | null;
+  target_knowledge_point_id?: number | null;
+  contribution_type: string;
+  title: string;
+  content_scope: string;
+  status: string;
+  match_reason: string;
+  duplicate_risk: string;
+  created_at: string;
+  recommended_code?: string;
+  recommended_title?: string;
+  source_space_title?: string;
+  source_point_code?: string;
+  source_point_title?: string;
+  contributor_name?: string;
+  content_preview?: string;
 };
 
 type Tab = "dashboard" | "knowledge" | "personal" | "review" | "pipeline";
@@ -288,20 +313,23 @@ function App() {
   const [selectedPersonalPointId, setSelectedPersonalPointId] = useState<number | null>(null);
   const [personalPoint, setPersonalPoint] = useState<PersonalPoint | null>(null);
   const [pending, setPending] = useState<Note[]>([]);
+  const [pendingContributions, setPendingContributions] = useState<Contribution[]>([]);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState("全部");
 
   async function refreshAll(nextSelectedId?: number | null) {
-    const [nextStats, nextPoints, nextPending, nextSpaces] = await Promise.all([
+    const [nextStats, nextPoints, nextPending, nextContributions, nextSpaces] = await Promise.all([
       api<Stats>("/api/stats"),
       api<KnowledgePoint[]>("/api/knowledge-points"),
       api<Note[]>("/api/notes/pending"),
+      api<Contribution[]>("/api/contributions/pending"),
       api<PersonalSpace[]>("/api/personal-spaces")
     ]);
     setStats(nextStats);
     setPoints(nextPoints);
     setPending(nextPending);
+    setPendingContributions(nextContributions);
     setPersonalSpaces(nextSpaces);
     const targetId = nextSelectedId ?? selectedId ?? nextPoints[0]?.id ?? null;
     setSelectedId(targetId);
@@ -403,6 +431,16 @@ function App() {
     setBusy("");
   }
 
+  async function reviewContribution(contributionId: number, action: "approve" | "reject" | "request-revision") {
+    setBusy(`${action}-contribution-${contributionId}`);
+    await api(`/api/contributions/${contributionId}/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ comment: action === "approve" ? "审核通过，合并到公共知识库。" : "" })
+    });
+    await refreshAll(selectedId);
+    setBusy("");
+  }
+
   const filteredPoints = useMemo(() => {
     if (filter === "全部") return points;
     return points.filter((point) => point.tags.includes(filter) || point.title.includes(filter));
@@ -478,10 +516,18 @@ function App() {
             onSelectSpace={(spaceId) => loadPersonalSpace(spaceId, null)}
             onSelectPoint={(spaceId, pointId) => loadPersonalSpace(spaceId, pointId)}
             onRefresh={() => refreshPersonal(selectedSpaceId, selectedPersonalPointId)}
+            onContributionCreated={() => refreshAll(selectedId)}
           />
         )}
         {tab === "review" && (
-          <Review notes={pending} busy={busy} onApprove={approveNote} onReject={rejectNote} />
+          <Review
+            notes={pending}
+            contributions={pendingContributions}
+            busy={busy}
+            onApprove={approveNote}
+            onReject={rejectNote}
+            onContributionAction={reviewContribution}
+          />
         )}
         {tab === "pipeline" && <Pipeline />}
       </main>
@@ -497,6 +543,9 @@ function Dashboard({ stats, onImport, busy }: { stats: Stats | null; onImport: (
     ["待审核笔记", stats?.pending_notes ?? 0, Check],
     ["已合并笔记", stats?.approved_notes ?? 0, Upload],
     ["个人空间", stats?.personal_spaces ?? 0, Database],
+    ["待审核贡献", stats?.pending_contributions ?? 0, Check],
+    ["已合并贡献", stats?.approved_contributions ?? 0, Upload],
+    ["社区内容", stats?.community_content_units ?? 0, Layers],
     ["问答记录", stats?.qa_logs ?? 0, MessageSquare]
   ] as const;
   return (
@@ -513,7 +562,7 @@ function Dashboard({ stats, onImport, busy }: { stats: Stats | null; onImport: (
       <div className="flow">
         <h2>演示闭环</h2>
         <div className="flowSteps">
-          {["MinerU Markdown", "规则切分", "知识库展示", "笔记审核", "知识点问答"].map((step, index) => (
+          {["私人空间", "申请贡献", "审核预审", "合并公共库", "问答复用"].map((step, index) => (
             <div className="step" key={step}>
               <span>{index + 1}</span>
               <strong>{step}</strong>
@@ -627,6 +676,7 @@ function DetailPane({ detail }: { detail: KnowledgePointDetail | null }) {
             <div className="unitHead">
               <span>{unitLabel(unit.unit_type)}</span>
               <strong><InlineMarkdown>{unit.title || "教材内容"}</InlineMarkdown></strong>
+              {unit.source?.startsWith("community_contribution:") && <em className="communityBadge">社区贡献</em>}
             </div>
             <Markdown>{unit.content}</Markdown>
           </article>
@@ -690,6 +740,7 @@ function PersonalSpaces(props: {
   onSelectSpace: (spaceId: number) => void;
   onSelectPoint: (spaceId: number, pointId: number) => void;
   onRefresh: () => void;
+  onContributionCreated: () => void;
 }) {
   return (
     <section className="personalLayout">
@@ -731,6 +782,7 @@ function PersonalSpaces(props: {
         busy={props.busy}
         onSelectPoint={props.onSelectPoint}
         onRefresh={props.onRefresh}
+        onContributionCreated={props.onContributionCreated}
       />
     </section>
   );
@@ -777,6 +829,7 @@ function PersonalSpaceDetailView(props: {
   busy: string;
   onSelectPoint: (spaceId: number, pointId: number) => void;
   onRefresh: () => void;
+  onContributionCreated: () => void;
 }) {
   if (!props.space) {
     return <div className="detailPane empty">选择或创建一个个人学习空间。</div>;
@@ -808,7 +861,12 @@ function PersonalSpaceDetailView(props: {
             ))}
           </div>
         </div>
-        <PersonalPointDetail spaceId={props.space.id} point={props.point} onRefresh={props.onRefresh} />
+        <PersonalPointDetail
+          spaceId={props.space.id}
+          point={props.point}
+          onRefresh={props.onRefresh}
+          onContributionCreated={props.onContributionCreated}
+        />
       </div>
     </div>
   );
@@ -828,19 +886,26 @@ function ProgressSummary({ progress }: { progress: ProgressCounts }) {
   );
 }
 
-function PersonalPointDetail({ spaceId, point, onRefresh }: {
+function PersonalPointDetail({ spaceId, point, onRefresh, onContributionCreated }: {
   spaceId: number;
   point: PersonalPoint | null;
   onRefresh: () => void;
+  onContributionCreated: () => void;
 }) {
   const [question, setQuestion] = useState("请基于我上传的资料总结这个知识点。");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState("");
   const [hint, setHint] = useState("");
+  const [showContributionForm, setShowContributionForm] = useState(false);
+  const [contributionTitle, setContributionTitle] = useState("");
+  const [contributionType, setContributionType] = useState("note");
 
   useEffect(() => {
     setAnswer("");
     setHint("");
+    setShowContributionForm(false);
+    setContributionTitle(point?.title ?? "");
+    setContributionType("note");
   }, [point?.id]);
 
   if (!point) {
@@ -867,6 +932,26 @@ function PersonalPointDetail({ spaceId, point, onRefresh }: {
     setBusy("");
   }
 
+  async function submitContribution() {
+    setBusy("contribution");
+    const result = await api<Contribution>("/api/contributions/from-personal-point", {
+      method: "POST",
+      body: JSON.stringify({
+        space_id: spaceId,
+        personal_knowledge_point_id: point?.id,
+        contribution_type: contributionType,
+        title: contributionTitle || point?.title,
+        content_scope: "whole_point"
+      })
+    });
+    setHint(
+      `已进入审核队列，推荐合并到 ${result.recommended_code ?? ""} ${result.recommended_title ?? "待人工确认"}。${result.match_reason}`
+    );
+    setShowContributionForm(false);
+    await onContributionCreated();
+    setBusy("");
+  }
+
   return (
     <div className="detailPane">
       <div className="detailHeader">
@@ -886,11 +971,37 @@ function PersonalPointDetail({ spaceId, point, onRefresh }: {
             {progressLabel(status)}
           </button>
         ))}
-        <button className="ghostButton" onClick={() => setHint("第一版只做申请入口展示；后续会进入公共库审核队列。")}>
+        <button className="ghostButton" onClick={() => setShowContributionForm((value) => !value)}>
           申请贡献到公共库
         </button>
       </div>
       {hint && <div className="notice">{hint}</div>}
+      {showContributionForm && (
+        <div className="contributionForm">
+          <h3>申请贡献到公共知识库</h3>
+          <p>上传资料默认保留在私人空间；只有提交并审核通过后，内容才会进入公共知识库。</p>
+          <input
+            value={contributionTitle}
+            onChange={(event) => setContributionTitle(event.target.value)}
+            aria-label="贡献标题"
+          />
+          <select value={contributionType} onChange={(event) => setContributionType(event.target.value)} aria-label="贡献类型">
+            <option value="note">笔记</option>
+            <option value="explanation">讲解</option>
+            <option value="example">例题</option>
+            <option value="exercise">习题</option>
+            <option value="mistake">易错点</option>
+            <option value="faq">FAQ</option>
+          </select>
+          <div className="formActions">
+            <button className="primary" onClick={submitContribution} disabled={busy === "contribution"}>
+              {busy === "contribution" ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
+              提交到审核队列
+            </button>
+            <button className="ghostButton" onClick={() => setShowContributionForm(false)}>取消</button>
+          </div>
+        </div>
+      )}
 
       <div className="unitStack">
         {(point.units ?? []).map((unit) => (
@@ -917,15 +1028,76 @@ function PersonalPointDetail({ spaceId, point, onRefresh }: {
   );
 }
 
-function Review({ notes, busy, onApprove, onReject }: {
+function contributionLabel(type: string) {
+  const labels: Record<string, string> = {
+    note: "笔记",
+    explanation: "讲解",
+    example: "例题",
+    exercise: "习题",
+    mistake: "易错点",
+    faq: "FAQ"
+  };
+  return labels[type] ?? type;
+}
+
+function Review({ notes, contributions, busy, onApprove, onReject, onContributionAction }: {
   notes: Note[];
+  contributions: Contribution[];
   busy: string;
   onApprove: (id: number) => void;
   onReject: (id: number) => void;
+  onContributionAction: (id: number, action: "approve" | "reject" | "request-revision") => void;
 }) {
   return (
     <section className="review">
-      <h2>待审核笔记</h2>
+      <h2>审核中心</h2>
+      <div className="reviewGroup">
+        <h3>待审核贡献</h3>
+        {contributions.length === 0 ? <div className="emptyState">暂无待审核贡献。</div> : contributions.map((contribution) => (
+          <article className="reviewItem contributionReview" key={contribution.id}>
+            <div>
+              <span className="status">pending · {contributionLabel(contribution.contribution_type)}</span>
+              <h3>{contribution.title || "社区贡献"}</h3>
+              <p>{contribution.content_preview || "暂无内容预览"}</p>
+              <small>
+                来源：{contribution.source_space_title || "个人空间"} / {contribution.source_point_code || ""} {contribution.source_point_title || "个人知识点"}
+              </small>
+              <small>
+                推荐：{contribution.recommended_code || ""} {contribution.recommended_title || "待人工确认"} · {contribution.match_reason}
+              </small>
+              <small>{contribution.duplicate_risk}</small>
+            </div>
+            <div className="reviewActions">
+              <button
+                className="primary"
+                onClick={() => onContributionAction(contribution.id, "approve")}
+                disabled={busy === `approve-contribution-${contribution.id}`}
+                title="贡献审核通过"
+              >
+                <Check size={17} /> 通过
+              </button>
+              <button
+                className="ghostButton"
+                onClick={() => onContributionAction(contribution.id, "request-revision")}
+                disabled={busy === `request-revision-contribution-${contribution.id}`}
+                title="要求贡献者修改"
+              >
+                <RefreshCw size={17} /> 修改
+              </button>
+              <button
+                className="danger"
+                onClick={() => onContributionAction(contribution.id, "reject")}
+                disabled={busy === `reject-contribution-${contribution.id}`}
+                title="驳回贡献"
+              >
+                <X size={17} /> 驳回
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="reviewGroup">
+        <h3>待审核笔记</h3>
       {notes.length === 0 ? <div className="emptyState">暂无待审核笔记。</div> : notes.map((note) => (
         <article className="reviewItem" key={note.id}>
           <div>
@@ -944,6 +1116,7 @@ function Review({ notes, busy, onApprove, onReject }: {
           </div>
         </article>
       ))}
+      </div>
     </section>
   );
 }
