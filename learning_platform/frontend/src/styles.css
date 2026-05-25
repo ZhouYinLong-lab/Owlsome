@@ -94,6 +94,52 @@ nav button:hover {
   color: #ffffff;
 }
 
+.navDivider {
+  margin: 12px 0 4px;
+  color: #8fa199;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.roleSwitch {
+  margin-top: 28px;
+  padding: 12px;
+  border: 1px solid #2c3c34;
+  border-radius: 8px;
+  background: #1d2a24;
+}
+
+.roleSwitch span,
+.roleSwitch small {
+  display: block;
+}
+
+.roleSwitch span {
+  color: #ffffff;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.roleSwitch button {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #16201b;
+  background: #e0b15d;
+  font-weight: 800;
+}
+
+.roleSwitch small {
+  margin-top: 8px;
+  color: #b8c5bd;
+  font-size: 12px;
+}
+
 main {
   min-width: 0;
   padding: 26px;
@@ -183,8 +229,55 @@ h1 {
 }
 
 .metric strong {
-  font-size: 26px;
+  font-size: 22px;
   margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.workbenchGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.workbenchCard,
+.adminPanel {
+  background: #ffffff;
+  border: 1px solid #dfe6df;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.workbenchCard {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 220px;
+}
+
+.workbenchCard span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #496f61;
+  font-weight: 800;
+}
+
+.workbenchCard h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin-bottom: 0;
+}
+
+.workbenchCard p {
+  color: #69786d;
+  margin-bottom: 4px;
+}
+
+.workbenchCard button {
+  justify-self: start;
+  margin-top: auto;
 }
 
 .flow {
@@ -277,9 +370,55 @@ h1 {
   background: #496f61;
 }
 
+.resourceTree {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 14px;
+  padding: 12px;
+  background: #eef3ee;
+  border-radius: 8px;
+}
+
+.treeNode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-weight: 800;
+}
+
+.treeNode.course {
+  margin-left: 16px;
+}
+
+.treeGroup {
+  margin-left: 32px;
+  padding-left: 10px;
+  border-left: 2px solid #cbd8ce;
+}
+
+.treeGroup small {
+  color: #69786d;
+}
+
 .pointList {
   display: grid;
   gap: 8px;
+}
+
+.pointList.grouped {
+  gap: 14px;
+}
+
+.chapterGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.chapterGroup h3 {
+  color: #496f61;
+  font-size: 14px;
+  margin-bottom: 0;
 }
 
 .point {
@@ -315,6 +454,22 @@ h1 {
   border-bottom: 1px solid #dfe6df;
   padding-bottom: 12px;
   margin-bottom: 14px;
+}
+
+.resourceTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resourceTags em {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef7f6;
+  color: #315f60;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .unitStack {
@@ -677,6 +832,23 @@ textarea {
   gap: 12px;
 }
 
+.systemOverview {
+  display: grid;
+  gap: 16px;
+}
+
+.adminPanel {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+
+.adminPanel p {
+  color: #69786d;
+  margin-bottom: 0;
+}
+
 .reviewGroup {
   display: grid;
   gap: 10px;
@@ -769,6 +941,7 @@ textarea {
   .personalLayout,
   .personalWorkspace,
   .interactionGrid,
+  .workbenchGrid,
   .pipelineGrid {
     grid-template-columns: 1fr;
   }
@@ -783,6 +956,7 @@ textarea {
   }
 
   .topbar,
+  .adminPanel,
   .reviewItem {
     flex-direction: column;
   }

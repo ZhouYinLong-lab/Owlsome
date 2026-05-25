@@ -7,19 +7,24 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeKatex from "rehype-katex";
 import {
+  BarChart3,
   BookOpen,
   Check,
   Database,
   FileText,
   FlaskConical,
+  FolderTree,
   HelpCircle,
+  Home,
   Layers,
   Loader2,
   MessageSquare,
   Play,
   RefreshCw,
   Send,
+  ShieldCheck,
   Upload,
+  UserRound,
   X
 } from "lucide-react";
 import "katex/dist/katex.min.css";
@@ -141,7 +146,8 @@ type Contribution = {
   content_preview?: string;
 };
 
-type Tab = "dashboard" | "knowledge" | "personal" | "review" | "pipeline";
+type Tab = "dashboard" | "knowledge" | "personal" | "pipeline" | "review" | "system";
+type Role = "learner" | "admin";
 
 type ObsidianBlock =
   | { type: "markdown"; content: string }
@@ -309,8 +315,40 @@ function sourceLabel(source?: string) {
   return source;
 }
 
+function pageMeta(tab: Tab, role: Role) {
+  const adminSuffix = role === "admin" ? " · 管理员模式" : "";
+  const meta: Record<Tab, { eyebrow: string; title: string }> = {
+    dashboard: {
+      eyebrow: `Owlsome Learning${adminSuffix}`,
+      title: "今天从哪里开始学习？"
+    },
+    knowledge: {
+      eyebrow: "公共资源库",
+      title: "按学科、教材和章节浏览公共知识"
+    },
+    personal: {
+      eyebrow: "个人学习空间",
+      title: "把自己的资料整理成可问答的学习路径"
+    },
+    pipeline: {
+      eyebrow: "资料处理链路",
+      title: "从 PDF 到 Obsidian Markdown，再到知识库"
+    },
+    review: {
+      eyebrow: "管理员工作台",
+      title: "审核贡献与笔记，决定哪些内容进入公共库"
+    },
+    system: {
+      eyebrow: "系统概览",
+      title: "查看演示数据、导入状态和运行指标"
+    }
+  };
+  return meta[tab];
+}
+
 function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [role, setRole] = useState<Role>("learner");
   const [stats, setStats] = useState<Stats | null>(null);
   const [points, setPoints] = useState<KnowledgePoint[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -324,7 +362,6 @@ function App() {
   const [pendingContributions, setPendingContributions] = useState<Contribution[]>([]);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
-  const [filter, setFilter] = useState("全部");
 
   async function refreshAll(nextSelectedId?: number | null) {
     const [nextStats, nextPoints, nextPending, nextContributions, nextSpaces] = await Promise.all([
@@ -406,6 +443,12 @@ function App() {
     refreshAll().catch((err) => setMessage(`后端连接失败：${err.message}`));
   }, []);
 
+  useEffect(() => {
+    if (role === "learner" && (tab === "review" || tab === "system")) {
+      setTab("dashboard");
+    }
+  }, [role, tab]);
+
   async function importSample() {
     setBusy("import");
     try {
@@ -449,10 +492,7 @@ function App() {
     setBusy("");
   }
 
-  const filteredPoints = useMemo(() => {
-    if (filter === "全部") return points;
-    return points.filter((point) => point.tags.includes(filter) || point.title.includes(filter));
-  }, [filter, points]);
+  const meta = pageMeta(tab, role);
 
   return (
     <div className="shell">
@@ -460,53 +500,74 @@ function App() {
         <div className="brand">
           <div className="brandMark"><BookOpen size={24} /></div>
           <div>
-            <strong>AI 数学学习平台</strong>
-            <span>EL 交互组 Demo</span>
+            <strong>Owlsome Learning</strong>
+            <span>猫头鹰组 · EL Demo</span>
           </div>
         </div>
         <nav>
           <button className={tab === "dashboard" ? "active" : ""} onClick={() => setTab("dashboard")} title="控制台">
-            <Database size={18} /> 控制台
+            <Home size={18} /> 工作台
           </button>
           <button className={tab === "knowledge" ? "active" : ""} onClick={() => setTab("knowledge")} title="公共知识库">
-            <Layers size={18} /> 公共知识库
+            <FolderTree size={18} /> 公共资源库
           </button>
           <button className={tab === "personal" ? "active" : ""} onClick={() => setTab("personal")} title="个人学习空间">
-            <Upload size={18} /> 个人学习空间
-          </button>
-          <button className={tab === "review" ? "active" : ""} onClick={() => setTab("review")} title="笔记审核">
-            <Check size={18} /> 笔记审核
+            <UserRound size={18} /> 个人学习空间
           </button>
           <button className={tab === "pipeline" ? "active" : ""} onClick={() => setTab("pipeline")} title="资料处理">
             <FlaskConical size={18} /> 资料处理
           </button>
+          {role === "admin" && (
+            <>
+              <div className="navDivider">管理员</div>
+              <button className={tab === "review" ? "active" : ""} onClick={() => setTab("review")} title="审核中心">
+                <ShieldCheck size={18} /> 审核中心
+              </button>
+              <button className={tab === "system" ? "active" : ""} onClick={() => setTab("system")} title="系统概览">
+                <BarChart3 size={18} /> 系统概览
+              </button>
+            </>
+          )}
         </nav>
+        <div className="roleSwitch" aria-label="本地演示角色切换">
+          <span>{role === "admin" ? "管理员模式" : "学习者模式"}</span>
+          <button onClick={() => setRole(role === "admin" ? "learner" : "admin")}>
+            {role === "admin" ? <UserRound size={16} /> : <ShieldCheck size={16} />}
+            切换为{role === "admin" ? "学习者" : "管理员"}
+          </button>
+          <small>本地演示隔离；正式权限后续接入南哪小帮手。</small>
+        </div>
       </aside>
 
       <main>
         <header className="topbar">
           <div>
-            <p className="eyebrow">公共教材知识库构建 + 笔记审核合并</p>
-            <h1>把静态微积分教材变成可审核、可问答的学习单元</h1>
+            <p className="eyebrow">{meta.eyebrow}</p>
+            <h1>{meta.title}</h1>
           </div>
-          <button className="primary" onClick={importSample} disabled={busy === "import"} title="一键导入样例">
-            {busy === "import" ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
-            一键导入样例
-          </button>
+          {role === "admin" && (
+            <button className="primary" onClick={importSample} disabled={busy === "import"} title="一键导入样例">
+              {busy === "import" ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
+              一键导入样例
+            </button>
+          )}
         </header>
 
         {message && <div className="notice">{message}</div>}
 
         {tab === "dashboard" && (
-          <Dashboard stats={stats} onImport={importSample} busy={busy === "import"} />
+          <Dashboard
+            stats={stats}
+            spaces={personalSpaces}
+            points={points}
+            onNavigate={setTab}
+          />
         )}
         {tab === "knowledge" && (
           <KnowledgeBase
-            points={filteredPoints}
+            points={points}
             selectedId={selectedId}
             detail={detail}
-            filter={filter}
-            onFilter={setFilter}
             onSelect={selectPoint}
             onRefresh={() => refreshAll(selectedId)}
           />
@@ -537,24 +598,29 @@ function App() {
             onContributionAction={reviewContribution}
           />
         )}
+        {tab === "system" && role === "admin" && (
+          <SystemOverview stats={stats} onImport={importSample} busy={busy === "import"} />
+        )}
         {tab === "pipeline" && <Pipeline />}
       </main>
     </div>
   );
 }
 
-function Dashboard({ stats, onImport, busy }: { stats: Stats | null; onImport: () => void; busy: boolean }) {
+function Dashboard({ stats, spaces, points, onNavigate }: {
+  stats: Stats | null;
+  spaces: PersonalSpace[];
+  points: KnowledgePoint[];
+  onNavigate: (tab: Tab) => void;
+}) {
+  const recentSpace = spaces[0];
+  const progress = recentSpace?.progress;
+  const mastered = progress ? `${progress.mastered}/${progress.total}` : "0/0";
   const cards = [
-    ["课程", stats?.courses ?? 0, BookOpen],
-    ["知识点", stats?.knowledge_points ?? 0, Layers],
-    ["内容单元", stats?.content_units ?? 0, FileText],
-    ["待审核笔记", stats?.pending_notes ?? 0, Check],
-    ["已合并笔记", stats?.approved_notes ?? 0, Upload],
-    ["个人空间", stats?.personal_spaces ?? 0, Database],
-    ["待审核贡献", stats?.pending_contributions ?? 0, Check],
-    ["已合并贡献", stats?.approved_contributions ?? 0, Upload],
-    ["社区内容", stats?.community_content_units ?? 0, Layers],
-    ["问答记录", stats?.qa_logs ?? 0, MessageSquare]
+    ["公共资源", stats?.knowledge_points ?? 0, FolderTree],
+    ["个人空间", stats?.personal_spaces ?? 0, UserRound],
+    ["学习进度", mastered, Check],
+    ["贡献状态", `${stats?.pending_contributions ?? 0} 待审 / ${stats?.approved_contributions ?? 0} 已合并`, ShieldCheck]
   ] as const;
   return (
     <section className="dashboard">
@@ -567,70 +633,124 @@ function Dashboard({ stats, onImport, busy }: { stats: Stats | null; onImport: (
           </div>
         ))}
       </div>
+
+      <div className="workbenchGrid">
+        <article className="workbenchCard">
+          <span><UserRound size={18} /> 继续学习</span>
+          <h2>{recentSpace?.title ?? "还没有个人学习空间"}</h2>
+          <p>
+            {recentSpace
+              ? `已掌握 ${mastered} 个知识点，疑难 ${recentSpace.progress.difficult} 个。`
+              : "上传 Markdown 或使用样例资料后，这里会显示最近学习进度。"}
+          </p>
+          <button className="primary" onClick={() => onNavigate("personal")}>
+            进入个人学习空间
+          </button>
+        </article>
+
+        <article className="workbenchCard">
+          <span><FolderTree size={18} /> 公共资源</span>
+          <h2>数学 / 微积分 II（第四版）</h2>
+          <p>当前公共库包含 {points.length} 个知识点，已按教材章节组织，适合作为团队共建底座。</p>
+          <button className="primary" onClick={() => onNavigate("knowledge")}>
+            浏览公共资源库
+          </button>
+        </article>
+
+        <article className="workbenchCard">
+          <span><ShieldCheck size={18} /> 贡献状态</span>
+          <h2>{stats?.approved_contributions ?? 0} 条已合并贡献</h2>
+          <p>个人资料默认保持私有；主动提交并通过审核后，才会进入公共知识库。</p>
+          <button className="ghostButton" onClick={() => onNavigate("personal")}>
+            从个人空间发起贡献
+          </button>
+        </article>
+      </div>
+
       <div className="flow">
-        <h2>演示闭环</h2>
+        <h2>核心闭环</h2>
         <div className="flowSteps">
-          {["私人空间", "申请贡献", "审核预审", "合并公共库", "问答复用"].map((step, index) => (
+          {["私人学习", "主动贡献", "管理员审核", "进入公共库", "问答复用"].map((step, index) => (
             <div className="step" key={step}>
               <span>{index + 1}</span>
               <strong>{step}</strong>
             </div>
           ))}
         </div>
-        <button className="primary" onClick={onImport} disabled={busy} title="导入样例知识库">
-          {busy ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
-          从已有解析结果导入第 5 章 5.1-5.2
-        </button>
       </div>
     </section>
   );
+}
+
+function groupPointsByChapter(points: KnowledgePoint[]) {
+  const groups = new Map<string, KnowledgePoint[]>();
+  for (const point of points) {
+    const chapter = point.chapter_title || "未分章资源";
+    groups.set(chapter, [...(groups.get(chapter) ?? []), point]);
+  }
+  return [...groups.entries()].map(([chapter, chapterPoints]) => ({ chapter, points: chapterPoints }));
 }
 
 function KnowledgeBase(props: {
   points: KnowledgePoint[];
   selectedId: number | null;
   detail: KnowledgePointDetail | null;
-  filter: string;
-  onFilter: (value: string) => void;
   onSelect: (id: number) => void;
   onRefresh: () => void;
 }) {
+  const chapters = useMemo(() => groupPointsByChapter(props.points), [props.points]);
+  const communityUnits = props.detail?.units.filter((unit) => unit.source?.startsWith("community_contribution:")).length ?? 0;
+  const sourceTags = props.detail
+    ? Array.from(new Set(props.detail.units.map((unit) => sourceLabel(unit.source)).filter(Boolean)))
+    : [];
   return (
     <section className="workspace">
       <div className="listPane">
         <div className="paneHead">
-          <h2>知识点目录</h2>
+          <h2>公共资源库</h2>
           <button className="iconButton" onClick={props.onRefresh} title="刷新">
             <RefreshCw size={17} />
           </button>
         </div>
-        <div className="filters">
-          {["全部", "极限", "连续性", "偏导数", "全微分", "例题"].map((item) => (
-            <button key={item} className={props.filter === item ? "active" : ""} onClick={() => props.onFilter(item)}>
-              {item}
-            </button>
+        <div className="resourceTree">
+          <div className="treeNode root"><FolderTree size={16} /> 数学</div>
+          <div className="treeNode course"><BookOpen size={16} /> 微积分 II（第四版）</div>
+          {chapters.map((group) => (
+            <div className="treeGroup" key={group.chapter}>
+              <div className="treeNode chapter"><Layers size={16} /> {group.chapter}</div>
+              <small>{group.points.length} 个知识点 · {sourceTags[0] ?? "教材资源"}</small>
+            </div>
           ))}
         </div>
-        <div className="pointList">
-          {props.points.map((point) => (
-            <button
-              key={point.id}
-              className={props.selectedId === point.id ? "point selected" : "point"}
-              onClick={() => props.onSelect(point.id)}
-            >
-              <span>{point.code}</span>
-              <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
-              <small>{point.content_count} 个内容单元 · {point.approved_note_count} 条笔记</small>
-            </button>
+        <div className="pointList grouped">
+          {chapters.map((group) => (
+            <div className="chapterGroup" key={group.chapter}>
+              <h3>{group.chapter}</h3>
+              {group.points.map((point) => (
+                <button
+                  key={point.id}
+                  className={props.selectedId === point.id ? "point selected" : "point"}
+                  onClick={() => props.onSelect(point.id)}
+                >
+                  <span>{point.code}</span>
+                  <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
+                  <small>{point.content_count} 个内容单元 · {point.approved_note_count} 条笔记</small>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </div>
-      <DetailPane detail={props.detail} />
+      <DetailPane detail={props.detail} communityUnits={communityUnits} sourceTags={sourceTags} />
     </section>
   );
 }
 
-function DetailPane({ detail }: { detail: KnowledgePointDetail | null }) {
+function DetailPane({ detail, communityUnits, sourceTags }: {
+  detail: KnowledgePointDetail | null;
+  communityUnits: number;
+  sourceTags: string[];
+}) {
   const [question, setQuestion] = useState("这个知识点考试时最容易错在哪里？");
   const [answer, setAnswer] = useState("");
   const [noteTitle, setNoteTitle] = useState("课堂补充");
@@ -676,6 +796,10 @@ function DetailPane({ detail }: { detail: KnowledgePointDetail | null }) {
         <span>{detail.code}</span>
         <h2><InlineMarkdown>{detail.title}</InlineMarkdown></h2>
         <p>{detail.summary}</p>
+        <div className="resourceTags">
+          {sourceTags.map((tag) => <em key={tag}>{tag}</em>)}
+          {communityUnits > 0 && <em>社区贡献 {communityUnits}</em>}
+        </div>
       </div>
 
       <div className="unitStack">
@@ -764,7 +888,7 @@ function PersonalSpaces(props: {
         />
         <div className="listPane">
           <div className="paneHead">
-            <h2>个人空间</h2>
+            <h2>我的资料</h2>
             <button className="iconButton" onClick={props.onRefresh} title="刷新个人空间">
               <RefreshCw size={17} />
             </button>
@@ -807,7 +931,7 @@ function UploadMarkdownPanel({ busy, onCreateSample, onUpload }: {
 }) {
   return (
     <div className="uploadPanel">
-      <h2>上传个人资料</h2>
+      <h2>创建学习空间</h2>
       <label className="filePicker">
         <Upload size={18} />
         <span>{busy === "personal-upload" ? "正在生成空间..." : "选择 Markdown / TXT"}</span>
@@ -827,9 +951,9 @@ function UploadMarkdownPanel({ busy, onCreateSample, onUpload }: {
       </button>
       <button className="disabledAction" disabled title="PDF 解析占位">
         <FileText size={18} />
-        PDF 上传接入 MinerU 解析中
+        PDF 上传接入中
       </button>
-      <p>第一版真实支持 Markdown 上传；PDF 后续会走 mineru_tools → text_archiver → 个人空间链路。</p>
+      <p>PDF 解析将接入 MinerU + text_archiver，当前演示请使用 Markdown 或样例资料。</p>
     </div>
   );
 }
@@ -858,7 +982,7 @@ function PersonalSpaceDetailView(props: {
       </div>
       <div className="personalWorkspace">
         <div className="listPane compact">
-          <h3>个人目录</h3>
+          <h3>资料目录</h3>
           <div className="pointList">
             {props.space.points.map((point) => (
               <button
@@ -1130,6 +1254,44 @@ function Review({ notes, contributions, busy, onApprove, onReject, onContributio
           </div>
         </article>
       ))}
+      </div>
+    </section>
+  );
+}
+
+function SystemOverview({ stats, onImport, busy }: { stats: Stats | null; onImport: () => void; busy: boolean }) {
+  const cards = [
+    ["课程", stats?.courses ?? 0, BookOpen],
+    ["知识点", stats?.knowledge_points ?? 0, Layers],
+    ["内容单元", stats?.content_units ?? 0, FileText],
+    ["待审核笔记", stats?.pending_notes ?? 0, Check],
+    ["已合并笔记", stats?.approved_notes ?? 0, Upload],
+    ["个人空间", stats?.personal_spaces ?? 0, Database],
+    ["待审核贡献", stats?.pending_contributions ?? 0, ShieldCheck],
+    ["已合并贡献", stats?.approved_contributions ?? 0, Upload],
+    ["社区内容", stats?.community_content_units ?? 0, Layers],
+    ["问答记录", stats?.qa_logs ?? 0, MessageSquare]
+  ] as const;
+  return (
+    <section className="systemOverview">
+      <div className="adminPanel">
+        <div>
+          <h2>演示数据管理</h2>
+          <p>这里保留导入和统计能力，面向管理员或比赛演示操作者。</p>
+        </div>
+        <button className="primary" onClick={onImport} disabled={busy} title="导入样例知识库">
+          {busy ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
+          从已有解析结果导入第 5 章 5.1-5.2
+        </button>
+      </div>
+      <div className="statsGrid">
+        {cards.map(([label, value, Icon]) => (
+          <div className="metric" key={label}>
+            <Icon size={20} />
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
       </div>
     </section>
   );
