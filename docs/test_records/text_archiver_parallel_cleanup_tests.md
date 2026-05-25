@@ -194,3 +194,87 @@ API: https://openrouter.ai/api/v1
 1. `OPENROUTER_API_KEY` 是否为 OpenRouter 平台生成的 key，而不是其他平台的 DeepSeek key。
 2. 若使用 DeepSeek 官方 key，需要同步修改 `OPENROUTER_BASE_URL` 和模型名为对应平台的 OpenAI-compatible 配置。
 3. 确认 `.env` 中 `OPENROUTER_API_KEY=` 后没有多余中文说明、占位符或不可见字符。
+
+## 2026-05-25 sample_input DeepSeek 官方 API 成功测试
+
+### 测试目标
+
+将 provider 从 OpenRouter 切换为 DeepSeek 官方 OpenAI-compatible API 后，验证小样本真实清洗链路是否成功。
+
+### 本地配置
+
+未记录或暴露 API Key 原文，仅记录非敏感配置：
+
+| 变量 | 值 |
+|---|---|
+| `OPENROUTER_BASE_URL` | `https://api.deepseek.com` |
+| `OPENROUTER_MODEL` | `deepseek-v4-flash` |
+| `OPENROUTER_API_KEY` | 已配置，长度 35 |
+
+说明：当前代码仍沿用 `OPENROUTER_*` 变量名，但其含义已经是 OpenAI-compatible provider 配置，可指向 DeepSeek 官方 API。
+
+### 执行命令
+
+先验证配置读取：
+
+```powershell
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --dry-run --parallel 1 --report
+```
+
+再执行真实 API 清洗：
+
+```powershell
+python D:\Projects\EL\text_archiver\main.py D:\Projects\EL\text_archiver\sample_input.md --parallel 1 --report --no-resume
+```
+
+### 关键输出
+
+```text
+输入文件: D:\Projects\EL\text_archiver\sample_input.md (239 字符)
+模型: deepseek-v4-flash
+API: https://api.deepseek.com
+分块: 1 块 (每块 ~4,000 字, 重叠: 段)
+云端格式化进度: 100%|██████████| 1/1 [00:07<00:00,  7.07s/块]
+
+原始: 239 字符 → 格式化后: 468 字符 (+229)
+输出文件: D:\Projects\EL\text_archiver\sample_input_formatted.md
+处理报告已保存至: D:\Projects\EL\text_archiver\sample_input_formatted.md.report.json
+```
+
+### Report 摘要
+
+| 字段 | 值 |
+|---|---|
+| `model` | `deepseek-v4-flash` |
+| `parallel` | 1 |
+| `total_chunks` | 1 |
+| `done_chunks` | 1 |
+| `failed_chunks` | 0 |
+| `fallback_chunks` | `[]` |
+| `duration_seconds` | 7.112 |
+| `attempts` | 1 |
+| `fallback_to_original` | `false` |
+
+### 输出质量抽查
+
+抽查 `sample_input_formatted.md`：
+
+- 已生成 Obsidian-compatible YAML frontmatter。
+- 标题层级从 `# / ## / ###` 正常输出。
+- 无序列表与有序列表格式被修正。
+- 中英文混排已有空格调整。
+- 未出现 API 错误或 fallback 原文标记。
+
+### 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| DeepSeek 官方 API 配置读取 | 通过 |
+| 真实 API 调用 | 通过 |
+| 单块清洗成功 | 通过 |
+| report 记录成功状态 | 通过 |
+| 输出文件被 `.gitignore` 忽略 | 通过 |
+
+### 结论
+
+`text_archiver` 已能通过 DeepSeek 官方 API 完成小样本真实清洗。下一步可以进行完整《微积分 II》的小并发测试，建议先使用 `--parallel 2 --auto-profile --profile-samples 5 --report`，观察速率限制和单块平均耗时后再提高并发。
