@@ -278,3 +278,110 @@ API: https://api.deepseek.com
 ### 结论
 
 `text_archiver` 已能通过 DeepSeek 官方 API 完成小样本真实清洗。下一步可以进行完整《微积分 II》的小并发测试，建议先使用 `--parallel 2 --auto-profile --profile-samples 5 --report`，观察速率限制和单块平均耗时后再提高并发。
+
+## 2026-05-25 完整《微积分 II》DeepSeek 并发清洗验收
+
+### 测试目标
+
+对完整《微积分 II（第四版）》MinerU Markdown 执行真实 LLM 清洗，验证 Stage 2.3 的完整闭环：
+
+```text
+完整 Markdown
+→ 自动生成本书整理规范
+→ parallel=2 分段并发清洗
+→ checkpoint 记录
+→ 顺序合并
+→ Obsidian 后处理
+→ formatted.md + report.json
+```
+
+### 输入与输出
+
+| 项目 | 路径 / 值 |
+|---|---|
+| 输入 | `D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full.md` |
+| 输出 | `D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full_formatted.md` |
+| 报告 | `D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full_formatted.md.report.json` |
+| 本书规范 | `D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full_profile.md` |
+
+### 执行命令
+
+```powershell
+$p = 'D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full.md'
+python D:\Projects\EL\text_archiver\main.py $p --parallel 2 --auto-profile --profile-samples 5 --report
+```
+
+### 环境与配置
+
+| 项目 | 值 |
+|---|---|
+| Provider | DeepSeek 官方 OpenAI-compatible API |
+| Base URL | `https://api.deepseek.com` |
+| Model | `deepseek-v4-flash` |
+| Parallel | 2 |
+| Chunk size | 4000 |
+| Profile mode | `auto` |
+| Profile size | 6,158 bytes |
+
+### Report 摘要
+
+| 字段 | 值 |
+|---|---:|
+| `total_chunks` | 159 |
+| `done_chunks` | 159 |
+| `failed_chunks` | 0 |
+| `fallback_chunks` | 0 |
+| `duration_seconds` | 2,158.487 |
+| 总耗时 | 约 35 分 58 秒 |
+| `average_chunk_seconds` | 62.009 |
+| attempts | 159 个 chunk 均为 1 次成功 |
+| 输出文件大小 | 745,832 bytes |
+| report 大小 | 23,175 bytes |
+
+最慢 chunk：
+
+| chunk | seconds | attempts | fallback |
+|---:|---:|---:|---|
+| 91 | 141.17 | 1 | false |
+| 86 | 129.48 | 1 | false |
+| 72 | 120.62 | 1 | false |
+| 119 | 118.65 | 1 | false |
+| 53 | 114.27 | 1 | false |
+
+### 输出抽查
+
+头部抽查：
+
+- 已生成 Obsidian-compatible YAML frontmatter。
+- 标题、作者、封面图片引用均保留。
+- 前言段落可读，未出现 API 错误文本。
+
+尾部抽查：
+
+- 文档尾部保留到第 10 章习题答案区域。
+- 多个行内公式和块级公式仍以 LaTeX 形式存在。
+- 未出现 chunk 顺序错乱或明显重复合并痕迹。
+
+### 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 自动生成本书整理规范 | 通过 |
+| 完整教材 159 块全部处理 | 通过 |
+| 并发清洗 `parallel=2` | 通过 |
+| chunk 输出按原顺序合并 | 通过 |
+| 失败 chunk fallback 机制 | 未触发，报告为 0 |
+| report 记录完整统计 | 通过 |
+| Obsidian 后处理 | 通过 |
+| 输出产物被 `.gitignore` 保护 | 通过，位于 ignored 的 `mineru_tools/output` |
+
+### 结论
+
+Stage 2.3 的核心能力已经通过完整教材真实测试：`text_archiver` 可以对 60 万字符量级的 MinerU Markdown 生成本书规范，并使用 DeepSeek 官方 API 进行稳定的分段并发清洗。此次测试没有 API 失败、没有 fallback、没有重试，说明 `parallel=2` 是当前较稳妥的默认压测配置。
+
+后续优化方向：
+
+1. 对比 `parallel=1` 和 `parallel=2` 的总耗时，量化并发加速比。
+2. 抽样检查公式和表格密集区域，统计公式损坏率。
+3. 优化 chunk 策略，减少 90 秒以上长尾 chunk。
+4. 将 formatted 结果接入 `learning_platform` 个人空间或公共库导入流程。
