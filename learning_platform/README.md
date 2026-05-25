@@ -26,6 +26,23 @@ npm run dev
 
 也就是说，本地存在完整 `text_archiver` 清洗结果时，demo 会优先使用清洗后的 Obsidian-compatible Markdown； fresh clone 或离线演示仍可回退到仓库内置样例。
 
+## 准备演示数据
+
+比赛展示前可以用 seed 工具一键准备稳定数据。该命令会备份并重建本地 SQLite 数据库，不会提交数据库、备份文件或 `.env`：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\seed_demo.py --all
+```
+
+执行后前端应能看到：
+
+- 公共知识库已有 8 个知识点。
+- 个人学习空间已有样例空间。
+- 审核中心有 1 条待审核贡献。
+- 公共知识点详情页已有 1 条“社区贡献”。
+- 首页统计卡片显示 pending / approved / community 内容。
+
 ## 个人学习空间
 
 前端“个人学习空间”页面支持两种稳定演示方式：

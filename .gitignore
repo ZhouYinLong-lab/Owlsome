@@ -20,6 +20,7 @@ build/
 # Local runtime data
 learning_platform/backend/data/*.db
 learning_platform/backend/data/*.db-*
+learning_platform/backend/data/*.db.bak
 mineru_tools/data/
 mineru_tools/output/
 mineru_tools/uploads/
