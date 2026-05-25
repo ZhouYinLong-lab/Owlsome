@@ -705,14 +705,37 @@ textarea {
   border-left: 5px solid #496f61;
 }
 
-.communityBadge {
+.communityBadge,
+.sourceBadge {
   padding: 3px 7px;
   border-radius: 999px;
-  background: #fff7df;
-  color: #6e5421;
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
+}
+
+.communityBadge {
+  background: #fff7df;
+  color: #6e5421;
+}
+
+.sourceBadge {
+  background: #eef7f6;
+  color: #315f60;
+}
+
+.previewBox {
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fbfcfa;
+  border: 1px solid #dfe6df;
+}
+
+.previewBox .markdown-body {
+  font-size: 14px;
 }
 
 .pipelineGrid {

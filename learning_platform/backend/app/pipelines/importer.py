@@ -41,6 +41,14 @@ def resolve_sample_markdown() -> Path:
 SAMPLE_MARKDOWN = resolve_sample_markdown()
 
 
+def sample_source_label() -> str:
+    if SAMPLE_MARKDOWN == LOCAL_FORMATTED_MARKDOWN:
+        return "text_archiver cleaned Markdown"
+    if SAMPLE_MARKDOWN == LOCAL_MINERU_MARKDOWN:
+        return "MinerU Markdown"
+    return "tracked sample Markdown"
+
+
 def import_sample() -> ImportResult:
     """Import the prepared MinerU Markdown into the demo knowledge base.
 
@@ -141,7 +149,7 @@ def import_sample() -> ImportResult:
                         (knowledge_point_id, unit_type, title, content, order_index, source)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (kp_id, unit.unit_type, unit.title, unit.content, unit_order, "MinerU Markdown"),
+                    (kp_id, unit.unit_type, unit.title, unit.content, unit_order, sample_source_label()),
                 )
                 unit_count += 1
 

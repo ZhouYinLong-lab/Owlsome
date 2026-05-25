@@ -301,6 +301,14 @@ function unitLabel(type: string) {
   return labels[type] ?? type;
 }
 
+function sourceLabel(source?: string) {
+  if (!source) return "";
+  if (source.startsWith("community_contribution:")) return "社区贡献";
+  if (source.includes("text_archiver")) return "清洗版教材";
+  if (source.includes("MinerU")) return "MinerU 原文";
+  return source;
+}
+
 function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [stats, setStats] = useState<Stats | null>(null);
@@ -676,7 +684,11 @@ function DetailPane({ detail }: { detail: KnowledgePointDetail | null }) {
             <div className="unitHead">
               <span>{unitLabel(unit.unit_type)}</span>
               <strong><InlineMarkdown>{unit.title || "教材内容"}</InlineMarkdown></strong>
-              {unit.source?.startsWith("community_contribution:") && <em className="communityBadge">社区贡献</em>}
+              {sourceLabel(unit.source) && (
+                <em className={unit.source?.startsWith("community_contribution:") ? "communityBadge" : "sourceBadge"}>
+                  {sourceLabel(unit.source)}
+                </em>
+              )}
             </div>
             <Markdown>{unit.content}</Markdown>
           </article>
@@ -1058,7 +1070,9 @@ function Review({ notes, contributions, busy, onApprove, onReject, onContributio
             <div>
               <span className="status">pending · {contributionLabel(contribution.contribution_type)}</span>
               <h3>{contribution.title || "社区贡献"}</h3>
-              <p>{contribution.content_preview || "暂无内容预览"}</p>
+              <div className="previewBox">
+                <Markdown>{contribution.content_preview || "暂无内容预览"}</Markdown>
+              </div>
               <small>
                 来源：{contribution.source_space_title || "个人空间"} / {contribution.source_point_code || ""} {contribution.source_point_title || "个人知识点"}
               </small>
@@ -1129,12 +1143,12 @@ function Pipeline() {
         <div>
           <FileText size={24} />
           <strong>mineru_tools</strong>
-          <p>复用现有 PDF → Markdown 能力。公共库和个人样例都可读取已经生成的 `merged_full.md`，避免现场解析耗时。</p>
+          <p>复用现有 PDF → Markdown 能力。完整《微积分 II》已产出 `merged_full.md`，避免现场解析耗时。</p>
         </div>
         <div>
           <FlaskConical size={24} />
           <strong>text_archiver</strong>
-          <p>复用 Markdown 清洗思路。配置 OpenRouter Key 后，可把清洗作为导入前的可选步骤。</p>
+          <p>已通过 DeepSeek 官方 API 完整清洗《微积分 II》，生成 `merged_full_formatted.md`，并作为 demo 优先导入源。</p>
         </div>
         <div>
           <Layers size={24} />
