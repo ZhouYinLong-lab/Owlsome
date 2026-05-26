@@ -43,6 +43,24 @@ python scripts\seed_demo.py --all
 - 公共知识点详情页已有 1 条“社区贡献”。
 - 首页统计卡片显示 pending / approved / community 内容。
 
+## 微积分 II 全书结构化导入
+
+完整清洗版教材可先用纯规则脚本做 dry-run，不调用 LLM、不写数据库，只生成结构化验收报告：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\import_calculus_full.py --dry-run --report D:\Projects\EL\docs\test_records\calculus_full_import_report.md
+```
+
+确认报告中的章节、知识点和内容单元统计可接受后，再执行真实导入：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\import_calculus_full.py --import --reset-course
+```
+
+第一版规则导入会优先读取本地 `merged_full_formatted.md`，识别章、节/小节、定义、定理、例题和习题，并生成 Markdown 验收报告。它不做数学内容审校，也不自动判定题目与知识点的高精度关联。
+
 ## 个人学习空间
 
 前端“个人学习空间”页面支持两种稳定演示方式：

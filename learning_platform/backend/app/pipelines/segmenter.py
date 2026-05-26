@@ -22,13 +22,26 @@ class SegmentedKnowledgePoint:
     units: list[SegmentedUnit] = field(default_factory=list)
 
 
+@dataclass
+class SegmentedChapter:
+    code: str
+    title: str
+    raw_markdown: str
+    order_index: int
+    points: list[SegmentedKnowledgePoint] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
 SECTION_START_RE = re.compile(r"^#{1,3}\s+5\.(1|2)\s+(.+)$", re.MULTILINE)
 SUBSECTION_RE = re.compile(r"^#{1,3}\s+(5\.(?:1|2)\.\d+)\s+(.+)$", re.MULTILINE)
+CHAPTER_RE = re.compile(r"^#{1,3}\s+第\s*(\d+)\s*章\s+(.+?)\s*$", re.MULTILINE)
+NUMBERED_SECTION_RE = re.compile(r"^#{1,4}\s+(\d+\.\d+)\s+(.+?)\s*$", re.MULTILINE)
+NUMBERED_SUBSECTION_RE = re.compile(r"^#{1,5}\s+(\d+\.\d+\.\d+)\s+(.+?)\s*$", re.MULTILINE)
 
 # 这些 marker 是第一版规则切分的核心：教材文本有比较稳定的“定义/定理/例/习题”
 # 起始格式。先用规则保证离线可演示，再给 LLM 增强留下入口。
 UNIT_MARKER_RE = re.compile(
-    r"^\s*(?:>\s*)?(?:\[\![^\]]+\]\s*)?(?:#{1,6}\s*)?(?:\*\*)?(定义\s*(?:\d+\.\d+\.\d+)?.*|定理\s*(?:\d+\.\d+\.\d+)?.*|定理\d+\.\d+\.\d+.*|例\s*(?:\d+\.\d+\.\d+)?.*|例\d+\.\d+\.\d+.*|习题\s*\d+(?:\.\d+)?.*)$",
+    r"^\s*(?:>\s*)?(?:\[\![^\]]+\]\s*)?(?:#{1,6}\s*)?(?:\*\*)?(定义\s*(?:\d+\.\d+\.\d+)?.*|定理\s*(?:\d+\.\d+\.\d+)?.*|定理\d+\.\d+\.\d+.*|推论\s*(?:\d+\.\d+\.\d+)?.*|证明.*|注\s*(?:\d+\.\d+\.\d+)?.*|例\s*(?:\d+\.\d+\.\d+)?.*|例\d+\.\d+\.\d+.*|习题\s*\d+(?:\.\d+)?.*)$",
     re.MULTILINE,
 )
 GENERIC_HEADING_RE = re.compile(r"^(#{1,3})\s+(.+)$", re.MULTILINE)
@@ -85,6 +98,8 @@ def classify_unit(marker: str) -> str:
     if marker.startswith("定义"):
         return "definition"
     if marker.startswith("定理"):
+        return "theorem"
+    if marker.startswith("推论"):
         return "theorem"
     if marker.startswith("例"):
         return "example"
@@ -143,7 +158,94 @@ def make_tags(title: str, units: list[SegmentedUnit]) -> list[str]:
         tags.append("全微分")
     if any(unit.unit_type == "example" for unit in units):
         tags.append("例题")
+    if "积分" in title:
+        tags.append("积分")
+    if "级数" in title:
+        tags.append("级数")
+    if "方程" in title:
+        tags.append("微分方程")
     return tags
+
+
+def split_full_textbook(markdown: str) -> list[SegmentedChapter]:
+    """Split a cleaned full textbook into chapters and learning points.
+
+    This is intentionally rule-only for the first full-book importer. It gives
+    us deterministic local runs and a reportable warning surface before any LLM
+    summary or semantic validation is introduced.
+    """
+    chapters: list[SegmentedChapter] = []
+    chapter_matches = list(CHAPTER_RE.finditer(markdown))
+    if not chapter_matches:
+        return chapters
+
+    seen_chapter_codes: set[str] = set()
+    for match_index, match in enumerate(chapter_matches):
+        code = match.group(1)
+        title = normalize_title(match.group(2))
+        start = match.end()
+        end = chapter_matches[match_index + 1].start() if match_index + 1 < len(chapter_matches) else len(markdown)
+        body = markdown[start:end].strip()
+
+        # Cleaned textbooks can repeat chapter names in a table of contents.
+        # Keep only chapter bodies that contain substantial numbered sections.
+        if code in seen_chapter_codes or len(body) < 1000 or not NUMBERED_SECTION_RE.search(body):
+            continue
+        seen_chapter_codes.add(code)
+
+        chapter = SegmentedChapter(
+            code=code,
+            title=f"第 {code} 章 {title}",
+            raw_markdown=body,
+            order_index=int(code),
+        )
+        chapter.points = split_chapter_points(code, body)
+        if not chapter.points:
+            chapter.warnings.append("未识别到知识点，已跳过导入。")
+        chapters.append(chapter)
+    return chapters
+
+
+def split_chapter_points(chapter_code: str, chapter_body: str) -> list[SegmentedKnowledgePoint]:
+    # Prefer subsection-level knowledge points such as 5.1.1. If a chapter only
+    # has section headings, each section becomes one coarse knowledge point.
+    subsection_matches = [
+        match for match in NUMBERED_SUBSECTION_RE.finditer(chapter_body)
+        if match.group(1).startswith(f"{chapter_code}.")
+    ]
+    if subsection_matches:
+        return _points_from_matches(chapter_body, subsection_matches)
+
+    section_matches = [
+        match for match in NUMBERED_SECTION_RE.finditer(chapter_body)
+        if match.group(1).startswith(f"{chapter_code}.")
+    ]
+    return _points_from_matches(chapter_body, section_matches)
+
+
+def _points_from_matches(markdown: str, matches: list[re.Match[str]]) -> list[SegmentedKnowledgePoint]:
+    points: list[SegmentedKnowledgePoint] = []
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(markdown)
+        code = match.group(1)
+        title = normalize_title(match.group(2))
+        body = markdown[start:end].strip()
+        if len(body) < 40:
+            continue
+        units = split_units(body)
+        points.append(
+            SegmentedKnowledgePoint(
+                code=code,
+                title=title[:120],
+                summary=summarize(code, title, units),
+                raw_markdown=body,
+                difficulty=2,
+                tags=make_tags(title, units),
+                units=units,
+            )
+        )
+    return points
 
 
 def segment_markdown(markdown: str) -> list[SegmentedKnowledgePoint]:
