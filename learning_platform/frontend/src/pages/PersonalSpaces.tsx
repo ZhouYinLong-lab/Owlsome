@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { FileText, Loader2, MessageSquare, Play, RefreshCw, Send, Upload } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  FolderTree,
+  Loader2,
+  MessageSquare,
+  Play,
+  RefreshCw,
+  Send,
+  Upload
+} from "lucide-react";
 import { api } from "../api";
 import { InlineMarkdown, Markdown } from "../components/MarkdownRenderer";
 import type { Contribution, PersonalPoint, PersonalSpace, PersonalSpaceDetail, ProgressCounts } from "../types";
@@ -19,6 +30,29 @@ export function PersonalSpaces(props: {
   onRefresh: () => void;
   onContributionCreated: () => void;
 }) {
+  const [openSpaces, setOpenSpaces] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setOpenSpaces((current) => {
+      const next = new Set(current);
+      if (props.selectedSpaceId) next.add(props.selectedSpaceId);
+      if (!props.selectedSpaceId && props.spaces[0]) next.add(props.spaces[0].id);
+      return next;
+    });
+  }, [props.selectedSpaceId, props.spaces]);
+
+  function toggleSpace(spaceId: number) {
+    setOpenSpaces((current) => {
+      const next = new Set(current);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  }
+
   return (
     <section className="personalLayout">
       <div className="personalLeft">
@@ -34,19 +68,43 @@ export function PersonalSpaces(props: {
               <RefreshCw size={17} />
             </button>
           </div>
-          <div className="pointList">
+          <div className="personalTree">
             {props.spaces.map((space) => (
-              <button
-                key={space.id}
-                className={props.selectedSpaceId === space.id ? "point selected" : "point"}
-                onClick={() => props.onSelectSpace(space.id)}
-              >
-                <span>{space.source_type}</span>
-                <strong><InlineMarkdown>{space.title}</InlineMarkdown></strong>
-                <small>
+              <div className="treeGroup personalSpaceGroup" key={space.id}>
+                <button
+                  className={props.selectedSpaceId === space.id ? "treeNode space selected" : "treeNode space"}
+                  onClick={() => {
+                    props.onSelectSpace(space.id);
+                    toggleSpace(space.id);
+                  }}
+                >
+                  {openSpaces.has(space.id) ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                  <FolderTree size={16} />
+                  <span>{space.source_type}</span>
+                  <strong><InlineMarkdown>{space.title}</InlineMarkdown></strong>
+                </button>
+                <small className="treeMeta">
                   {space.knowledge_point_count} 个知识点 · 已掌握 {space.progress.mastered}/{space.progress.total}
                 </small>
-              </button>
+                <div className={openSpaces.has(space.id) ? "treeChildren open" : "treeChildren"}>
+                  {props.selectedSpaceId === space.id && props.space?.points.map((point) => (
+                    <button
+                      key={point.id}
+                      className={props.selectedPointId === point.id ? "treePoint selected" : "treePoint"}
+                      onClick={() => props.onSelectPoint(space.id, point.id)}
+                    >
+                      <span>{point.code}</span>
+                      <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
+                      <small>{progressLabel(point.progress_status)} · {point.content_count ?? 0} 个内容单元</small>
+                    </button>
+                  ))}
+                  {props.selectedSpaceId !== space.id && (
+                    <button className="treePoint placeholder" onClick={() => props.onSelectSpace(space.id)}>
+                      展开后加载资料目录
+                    </button>
+                  )}
+                </div>
+              </div>
             ))}
             {props.spaces.length === 0 && <div className="emptyState">还没有个人空间，先上传 Markdown 或使用样例。</div>}
           </div>
@@ -119,23 +177,7 @@ function PersonalSpaceDetailView(props: {
         </div>
         <ProgressSummary progress={props.space.progress} />
       </div>
-      <div className="personalWorkspace">
-        <div className="listPane compact">
-          <h3>资料目录</h3>
-          <div className="pointList">
-            {props.space.points.map((point) => (
-              <button
-                key={point.id}
-                className={props.selectedPointId === point.id ? "point selected" : "point"}
-                onClick={() => props.onSelectPoint(props.space!.id, point.id)}
-              >
-                <span>{point.code}</span>
-                <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
-                <small>{progressLabel(point.progress_status)} · {point.content_count ?? 0} 个内容单元</small>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="personalWorkspace single">
         <PersonalPointDetail
           spaceId={props.space.id}
           point={props.point}

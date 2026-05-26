@@ -372,7 +372,7 @@ h1 {
 
 .resourceTree {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin: 12px 0 14px;
   padding: 12px;
   background: #eef3ee;
@@ -380,25 +380,102 @@ h1 {
 }
 
 .treeNode {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #26352e;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
+  min-height: 34px;
+  padding: 6px 8px;
   font-weight: 800;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.treeNode:hover,
+.treeNode.selected {
+  background: #dfe8e0;
 }
 
 .treeNode.course {
-  margin-left: 16px;
+  margin-left: 8px;
 }
 
 .treeGroup {
-  margin-left: 32px;
+  margin-left: 18px;
   padding-left: 10px;
   border-left: 2px solid #cbd8ce;
 }
 
 .treeGroup small {
   color: #69786d;
+}
+
+.treeChildren {
+  display: grid;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.22s ease, opacity 0.18s ease;
+}
+
+.treeChildren.open {
+  max-height: 1800px;
+  opacity: 1;
+}
+
+.treePoint {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #26352e;
+  text-align: left;
+  padding: 8px 10px 8px 30px;
+}
+
+.treePoint:hover,
+.treePoint.selected {
+  background: #ffffff;
+}
+
+.treePoint.selected {
+  box-shadow: inset 4px 0 0 #496f61;
+}
+
+.treePoint.placeholder {
+  color: #69786d;
+  font-size: 13px;
+}
+
+.treePoint span {
+  color: #496f61;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.treePoint small,
+.treeMeta {
+  color: #69786d;
+}
+
+.treeMeta {
+  display: block;
+  margin: -2px 0 5px 32px;
+}
+
+.personalTree {
+  display: grid;
+  gap: 8px;
+}
+
+.personalSpaceGroup {
+  margin-left: 0;
 }
 
 .pointList {
@@ -770,6 +847,10 @@ textarea {
   grid-template-columns: 300px minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+}
+
+.personalWorkspace.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .progressActions {

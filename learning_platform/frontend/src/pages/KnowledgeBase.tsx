@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, FolderTree, HelpCircle, Layers, Loader2, MessageSquare, RefreshCw, Send, Upload } from "lucide-react";
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
+  HelpCircle,
+  Layers,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  Send,
+  Upload
+} from "lucide-react";
 import { api } from "../api";
 import { InlineMarkdown, Markdown } from "../components/MarkdownRenderer";
 import type { KnowledgePoint, KnowledgePointDetail } from "../types";
@@ -22,10 +34,35 @@ export function KnowledgeBase(props: {
   onRefresh: () => void;
 }) {
   const chapters = useMemo(() => groupPointsByChapter(props.points), [props.points]);
+  const [mathOpen, setMathOpen] = useState(true);
+  const [courseOpen, setCourseOpen] = useState(true);
+  const [openChapters, setOpenChapters] = useState<Set<string>>(new Set());
   const communityUnits = props.detail?.units.filter((unit) => unit.source?.startsWith("community_contribution:")).length ?? 0;
   const sourceTags = props.detail
     ? Array.from(new Set(props.detail.units.map((unit) => sourceLabel(unit.source)).filter(Boolean)))
     : [];
+
+  useEffect(() => {
+    setOpenChapters((current) => {
+      const next = new Set(current);
+      if (next.size === 0 && chapters[0]) next.add(chapters[0].chapter);
+      const selectedChapter = chapters.find((group) => group.points.some((point) => point.id === props.selectedId));
+      if (selectedChapter) next.add(selectedChapter.chapter);
+      return next;
+    });
+  }, [chapters, props.selectedId]);
+
+  function toggleChapter(chapter: string) {
+    setOpenChapters((current) => {
+      const next = new Set(current);
+      if (next.has(chapter)) {
+        next.delete(chapter);
+      } else {
+        next.add(chapter);
+      }
+      return next;
+    });
+  }
 
   return (
     <section className="workspace">
@@ -37,32 +74,43 @@ export function KnowledgeBase(props: {
           </button>
         </div>
         <div className="resourceTree">
-          <div className="treeNode root"><FolderTree size={16} /> 数学</div>
-          <div className="treeNode course"><BookOpen size={16} /> 微积分 II（第四版）</div>
-          {chapters.map((group) => (
-            <div className="treeGroup" key={group.chapter}>
-              <div className="treeNode chapter"><Layers size={16} /> {group.chapter}</div>
-              <small>{group.points.length} 个知识点 · {sourceTags[0] ?? "教材资源"}</small>
+          <button className="treeNode root" onClick={() => setMathOpen((value) => !value)}>
+            {mathOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+            <FolderTree size={16} /> 数学
+          </button>
+          <div className={mathOpen ? "treeChildren open" : "treeChildren"}>
+            <button className="treeNode course" onClick={() => setCourseOpen((value) => !value)}>
+              {courseOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+              <BookOpen size={16} /> 微积分 II（第四版）
+            </button>
+            <div className={courseOpen ? "treeChildren open" : "treeChildren"}>
+              {chapters.map((group) => {
+                const chapterOpen = openChapters.has(group.chapter);
+                return (
+                  <div className="treeGroup" key={group.chapter}>
+                    <button className="treeNode chapter" onClick={() => toggleChapter(group.chapter)}>
+                      {chapterOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                      <Layers size={16} /> {group.chapter}
+                    </button>
+                    <small>{group.points.length} 个知识点 · {sourceTags[0] ?? "教材资源"}</small>
+                    <div className={chapterOpen ? "treeChildren open" : "treeChildren"}>
+                      {group.points.map((point) => (
+                        <button
+                          key={point.id}
+                          className={props.selectedId === point.id ? "treePoint selected" : "treePoint"}
+                          onClick={() => props.onSelect(point.id)}
+                        >
+                          <span>{point.code}</span>
+                          <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
+                          <small>{point.content_count} 个内容单元 · {point.approved_note_count} 条笔记</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-        <div className="pointList grouped">
-          {chapters.map((group) => (
-            <div className="chapterGroup" key={group.chapter}>
-              <h3>{group.chapter}</h3>
-              {group.points.map((point) => (
-                <button
-                  key={point.id}
-                  className={props.selectedId === point.id ? "point selected" : "point"}
-                  onClick={() => props.onSelect(point.id)}
-                >
-                  <span>{point.code}</span>
-                  <strong><InlineMarkdown>{point.title}</InlineMarkdown></strong>
-                  <small>{point.content_count} 个内容单元 · {point.approved_note_count} 条笔记</small>
-                </button>
-              ))}
-            </div>
-          ))}
+          </div>
         </div>
       </div>
       <DetailPane detail={props.detail} communityUnits={communityUnits} sourceTags={sourceTags} />
