@@ -1,5 +1,7 @@
 # Owlsome Learning Implementation Overview
 
+For a fuller handoff, read `docs/agent_handoff_guide.md`. For frontend theme and accessibility conventions, read `docs/design_system.md`.
+
 Owlsome Learning currently contains three cooperating modules:
 
 ```text
