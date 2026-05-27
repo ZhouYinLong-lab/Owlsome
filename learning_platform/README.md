@@ -33,6 +33,41 @@ npm run dev
 
 该入口调用后端 `POST /api/import/calculus-full`，普通学习者模式不可见。导入完成后公共资源库会按章节树展示全书结构。
 
+## 前端构建时 dist 被占用
+
+如果执行 `npm run build` 时出现类似错误：
+
+```text
+EPERM: operation not permitted, unlink 'D:\Projects\EL\learning_platform\frontend\dist\assets\index-xxx.js'
+```
+
+说明旧的 `dist` 产物正在被 Windows 进程占用。常见处理方式：
+
+1. 关闭正在运行的 `npm run dev`、`vite preview`、静态文件服务器或打开了 `dist` 文件的编辑器预览。
+2. 关闭正在查看旧构建页面的浏览器标签页。
+3. 在任务管理器中结束残留的 `node.exe` 进程，或在 PowerShell 中查看并结束：
+
+```powershell
+Get-Process node
+Stop-Process -Name node -Force
+```
+
+4. 手动删除旧构建目录后重试：
+
+```powershell
+Remove-Item -LiteralPath D:\Projects\EL\learning_platform\frontend\dist -Recurse -Force
+cd D:\Projects\EL\learning_platform\frontend
+npm run build
+```
+
+如果只是想确认代码能否打包，可临时输出到另一个目录：
+
+```powershell
+cd D:\Projects\EL\learning_platform\frontend
+npm run build -- --outDir dist_check
+Remove-Item -LiteralPath D:\Projects\EL\learning_platform\frontend\dist_check -Recurse -Force
+```
+
 ## 准备演示数据
 
 比赛展示前可以用 seed 工具一键准备稳定数据。该命令会备份并重建本地 SQLite 数据库，不会提交数据库、备份文件或 `.env`：

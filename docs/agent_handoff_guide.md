@@ -370,6 +370,15 @@ cd D:\Projects\EL\learning_platform\frontend
 npm run build
 ```
 
+If `npm run build` fails with `EPERM: operation not permitted, unlink ...\frontend\dist\assets\...`, the old `dist` output is being held by a Windows process. Close any Vite dev server, browser preview, editor file preview, or terminal serving `dist`, then remove `D:\Projects\EL\learning_platform\frontend\dist` manually and rerun the build. If you only need to validate TypeScript/Vite compilation without touching the locked folder, use:
+
+```powershell
+cd D:\Projects\EL\learning_platform\frontend
+npm run build -- --outDir dist_check
+```
+
+Delete `dist_check` afterwards; it is a temporary validation artifact and should not be committed.
+
 Manual browser checks:
 
 - learner mode hides admin review/system tabs
@@ -393,7 +402,7 @@ Manual browser checks:
 
 1. Persist frontend tab/tree state in URL or localStorage for better collaboration and demos.
 2. Add search and filtering to public/personal resource trees.
-3. Promote full Calculus II import from probe to product path after content QA.
+3. Run content QA on the productized full Calculus II import and mark any oversized or marker-poor knowledge points for second-pass splitting.
 4. Add real backend role checks after 南哪小帮手 login integration.
 5. Connect optional BGE retrieval to question-to-knowledge-point matching once the service is deployed.
 6. Add a formal migration path before moving from SQLite to PostgreSQL.
