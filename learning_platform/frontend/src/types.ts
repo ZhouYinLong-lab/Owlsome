@@ -11,6 +11,20 @@ export type Stats = {
   community_content_units: number;
 };
 
+export type CalculusFullImportResult = {
+  ok: boolean;
+  message: string;
+  course_id?: number | null;
+  input_path: string;
+  report_path: string;
+  imported: boolean;
+  reset_course: boolean;
+  chapters: number;
+  knowledge_points: number;
+  content_units: number;
+  unit_counts: Record<string, number>;
+};
+
 export type KnowledgePoint = {
   id: number;
   chapter_id: number;

@@ -8,6 +8,7 @@ import { Pipeline } from "./pages/Pipeline";
 import { ReviewCenter } from "./pages/ReviewCenter";
 import { SystemOverview } from "./pages/SystemOverview";
 import type {
+  CalculusFullImportResult,
   Contribution,
   KnowledgePoint,
   KnowledgePointDetail,
@@ -34,6 +35,7 @@ export function App() {
   const [personalPoint, setPersonalPoint] = useState<PersonalPoint | null>(null);
   const [pending, setPending] = useState<Note[]>([]);
   const [pendingContributions, setPendingContributions] = useState<Contribution[]>([]);
+  const [fullImportResult, setFullImportResult] = useState<CalculusFullImportResult | null>(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
 
@@ -137,6 +139,30 @@ export function App() {
     }
   }
 
+  async function importCalculusFull(dryRun: boolean) {
+    setBusy(dryRun ? "calculus-full-dry-run" : "calculus-full-import");
+    try {
+      const result = await api<CalculusFullImportResult>("/api/import/calculus-full", {
+        method: "POST",
+        body: JSON.stringify({
+          dry_run: dryRun,
+          reset_course: !dryRun,
+          write_report: true
+        })
+      });
+      setFullImportResult(result);
+      setMessage(result.message);
+      if (!dryRun) {
+        await refreshAll();
+        setTab("knowledge");
+      }
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "微积分 II 全书导入失败");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function selectPoint(id: number) {
     setSelectedId(id);
     setDetail(await api<KnowledgePointDetail>(`/api/knowledge-points/${id}`));
@@ -220,7 +246,14 @@ export function App() {
         />
       )}
       {tab === "system" && role === "admin" && (
-        <SystemOverview stats={stats} onImport={importSample} busy={busy === "import"} />
+        <SystemOverview
+          stats={stats}
+          onImport={importSample}
+          onImportFull={() => importCalculusFull(false)}
+          onDryRunFull={() => importCalculusFull(true)}
+          busy={busy}
+          fullImportResult={fullImportResult}
+        />
       )}
       {tab === "pipeline" && <Pipeline />}
     </AppShell>

@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import get_connection, init_db, row_to_dict, rows_to_dicts
 from app.models import (
+    CalculusFullImportRequest,
+    CalculusFullImportResult,
     ContributionCreateFromPersonalPoint,
     ContributionReviewRequest,
     ImportResult,
@@ -14,6 +16,7 @@ from app.models import (
     QARequest,
     QAResponse,
 )
+from app.pipelines.calculus_full_importer import import_calculus_full
 from app.pipelines.importer import import_sample
 from app.services import contributions
 from app.services.notes import approve_note, create_note, pending_notes, reject_note
@@ -87,6 +90,20 @@ def import_sample_api() -> ImportResult:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/api/import/calculus-full", response_model=CalculusFullImportResult)
+def import_calculus_full_api(payload: CalculusFullImportRequest | None = None) -> dict:
+    options = payload or CalculusFullImportRequest()
+    try:
+        return import_calculus_full(
+            dry_run=options.dry_run,
+            reset_course_before_import=options.reset_course,
+            write_report_file=options.write_report,
+            via_api=True,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.get("/api/courses")
 def courses() -> list[dict]:
     with get_connection() as conn:
@@ -108,7 +125,7 @@ def knowledge_points() -> list[dict]:
             LEFT JOIN content_units cu ON cu.knowledge_point_id = kp.id
             LEFT JOIN notes n ON n.knowledge_point_id = kp.id AND n.status = 'approved'
             GROUP BY kp.id
-            ORDER BY kp.order_index
+            ORDER BY c.order_index, kp.order_index
             """
         ).fetchall()
     return rows_to_dicts(rows)

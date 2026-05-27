@@ -12,6 +12,26 @@ class ImportResult(BaseModel):
     content_units: int = 0
 
 
+class CalculusFullImportRequest(BaseModel):
+    dry_run: bool = False
+    reset_course: bool = False
+    write_report: bool = True
+
+
+class CalculusFullImportResult(BaseModel):
+    ok: bool
+    message: str
+    course_id: int | None = None
+    input_path: str
+    report_path: str = ""
+    imported: bool
+    reset_course: bool
+    chapters: int
+    knowledge_points: int
+    content_units: int
+    unit_counts: dict[str, int]
+
+
 class CourseOut(BaseModel):
     id: int
     name: str

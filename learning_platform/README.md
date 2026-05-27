@@ -26,6 +26,13 @@ npm run dev
 
 也就是说，本地存在完整 `text_archiver` 清洗结果时，demo 会优先使用清洗后的 Obsidian-compatible Markdown； fresh clone 或离线演示仍可回退到仓库内置样例。
 
+管理员模式的“系统概览”还提供“微积分 II 全书导入”入口：
+
+- `先做 dry-run`：只切分清洗版教材并生成报告，不写入 SQLite。
+- `导入清洗版全书`：重建同名课程并导入第 5–10 章公共资源库。
+
+该入口调用后端 `POST /api/import/calculus-full`，普通学习者模式不可见。导入完成后公共资源库会按章节树展示全书结构。
+
 ## 准备演示数据
 
 比赛展示前可以用 seed 工具一键准备稳定数据。该命令会备份并重建本地 SQLite 数据库，不会提交数据库、备份文件或 `.env`：
@@ -57,6 +64,16 @@ python scripts\import_calculus_full.py --dry-run --report D:\Projects\EL\docs\te
 ```powershell
 cd D:\Projects\EL\learning_platform\backend
 python scripts\import_calculus_full.py --import --reset-course
+```
+
+也可以通过 API 验证：
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/import/calculus-full -ContentType "application/json" -Body '{"dry_run":true,"reset_course":false,"write_report":true}'
+```
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/import/calculus-full -ContentType "application/json" -Body '{"dry_run":false,"reset_course":true,"write_report":true}'
 ```
 
 第一版规则导入会优先读取本地 `merged_full_formatted.md`，识别章、节/小节、定义、定理、例题和习题，并生成 Markdown 验收报告。它不做数学内容审校，也不自动判定题目与知识点的高精度关联。

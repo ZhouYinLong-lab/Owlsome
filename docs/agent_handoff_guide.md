@@ -96,6 +96,7 @@ Important files:
 | `app/db.py` | SQLite path, schema creation, row helpers |
 | `app/models.py` | Pydantic request/response models |
 | `app/pipelines/importer.py` | sample public knowledge import, prefers cleaned `merged_full_formatted.md` |
+| `app/pipelines/calculus_full_importer.py` | shared full Calculus II import service used by API and CLI |
 | `app/pipelines/segmenter.py` | chapter/knowledge-point/content-unit splitting rules |
 | `app/services/personal.py` | private Markdown spaces and progress |
 | `app/services/notes.py` | note submission, matching, approval/rejection |
@@ -128,7 +129,7 @@ erDiagram
 | API group | Endpoints |
 |---|---|
 | Health/stats | `GET /api/health`, `GET /api/stats` |
-| Public resources | `POST /api/import/sample`, `GET /api/courses`, `GET /api/knowledge-points`, `GET /api/knowledge-points/{id}` |
+| Public resources | `POST /api/import/sample`, `POST /api/import/calculus-full`, `GET /api/courses`, `GET /api/knowledge-points`, `GET /api/knowledge-points/{id}` |
 | Notes | `POST /api/notes`, `GET /api/notes/pending`, `POST /api/notes/{id}/approve`, `POST /api/notes/{id}/reject` |
 | Public Q&A | `POST /api/qa` |
 | Personal spaces | `POST /api/personal-spaces/upload-markdown`, `POST /api/personal-spaces/from-sample`, `GET /api/personal-spaces`, `GET /api/personal-spaces/{id}` |
@@ -323,6 +324,24 @@ Expected result:
 
 ### Full Calculus II Import
 
+Admin UI path:
+
+```text
+管理员模式 -> 系统概览 -> 微积分 II 全书导入
+```
+
+Backend API:
+
+```text
+POST /api/import/calculus-full
+```
+
+Typical body:
+
+```json
+{"dry_run": false, "reset_course": true, "write_report": true}
+```
+
 Dry-run report:
 
 ```powershell
@@ -378,4 +397,3 @@ Manual browser checks:
 4. Add real backend role checks after 南哪小帮手 login integration.
 5. Connect optional BGE retrieval to question-to-knowledge-point matching once the service is deployed.
 6. Add a formal migration path before moving from SQLite to PostgreSQL.
-

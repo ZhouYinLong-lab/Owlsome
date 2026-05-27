@@ -418,6 +418,8 @@ select:focus-visible {
   gap: 6px;
   margin: 12px 0 14px;
   padding: 12px;
+  max-height: calc(100vh - 190px);
+  overflow: auto;
   background: var(--color-nju-purple-soft);
   border-radius: 8px;
 }
@@ -968,9 +970,44 @@ textarea {
   align-items: center;
 }
 
+.fullImportPanel {
+  align-items: flex-start;
+}
+
 .adminPanel p {
   color: var(--color-muted);
   margin-bottom: 0;
+}
+
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.importResult {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--color-nju-purple-soft);
+}
+
+.importResult strong,
+.importResult span,
+.importResult small {
+  overflow-wrap: anywhere;
+}
+
+.importResult strong {
+  color: var(--color-nju-purple);
+}
+
+.importResult small {
+  color: var(--color-muted);
 }
 
 .reviewGroup {
