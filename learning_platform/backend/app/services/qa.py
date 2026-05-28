@@ -120,11 +120,15 @@ def offline_answer(context: dict, question: str) -> str:
 
 
 def llm_answer(context: dict, question: str) -> str | None:
-    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENROUTER_API_KEY", "")
     if not api_key:
         return None
-    base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-    model = os.getenv("MODEL_NAME", "deepseek/deepseek-v4-flash:free")
+    base_url = os.getenv("LLM_BASE_URL") or os.getenv("OPENROUTER_BASE_URL", "https://api.deepseek.com")
+    model = (
+        os.getenv("LLM_MODEL")
+        or os.getenv("OPENROUTER_MODEL")
+        or os.getenv("MODEL_NAME", "deepseek-v4-flash")
+    )
     point = context["point"]
     snippets = "\n\n".join(unit["content"][:900] for unit in context["units"][:5])
     notes = "\n\n".join(note["content"][:500] for note in context["notes"][:3])

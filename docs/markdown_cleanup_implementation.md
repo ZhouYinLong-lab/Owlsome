@@ -14,7 +14,7 @@ Clean Markdown generated from PDF parsing while preserving source content and ma
 
 - Python 3.9+
 - OpenAI-compatible SDK (`openai`)
-- OpenRouter-compatible API endpoint
+- DeepSeek 或其他 OpenAI-compatible API endpoint
 - `python-dotenv` for local environment variables
 - `tqdm` for CLI progress
 - `difflib` for unified diff output
@@ -73,10 +73,19 @@ Each chunk is sent to an OpenAI-compatible chat completion endpoint with a stric
 The model is configured by:
 
 ```text
-OPENROUTER_API_KEY
-OPENROUTER_BASE_URL
-MODEL_NAME
+LLM_API_KEY
+LLM_BASE_URL
+LLM_MODEL
 ```
+
+Current default recommendation:
+
+```text
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
+```
+
+Legacy `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, and `MODEL_NAME` are still supported for existing environments.
 
 ### 4. Parallel cleanup
 
@@ -146,7 +155,7 @@ python main.py input.md --no-obsidian
 input.md
 → chunks[]
 → optional book profile
-→ OpenRouter / LLM, serial or parallel
+→ DeepSeek / OpenAI-compatible LLM, serial or parallel
 → processed chunk checkpoint
 → merged Markdown
 → Obsidian frontmatter + callout normalization

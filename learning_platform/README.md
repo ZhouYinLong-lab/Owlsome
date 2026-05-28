@@ -135,10 +135,12 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/import/calculus-full -C
 不配置 API Key 也能完整离线演示。若需要模型增强问答，可在后端运行环境中设置：
 
 ```powershell
-$env:OPENROUTER_API_KEY="你的 Key"
-$env:OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
-$env:MODEL_NAME="deepseek/deepseek-v4-flash:free"
+$env:LLM_API_KEY="你的 DeepSeek Key"
+$env:LLM_BASE_URL="https://api.deepseek.com"
+$env:LLM_MODEL="deepseek-v4-flash"
 ```
+
+旧的 `OPENROUTER_*` 与 `MODEL_NAME` 变量仍兼容；当前建议先用 DeepSeek 官方 OpenAI-compatible API，后续本地或内网模型部署好后只替换 `LLM_*`。
 
 ## 可选 BGE 检索增强
 

@@ -30,10 +30,12 @@ Copy-Item -Path D:\Projects\EL\text_archiver\.env.example -Destination D:\Projec
 在 `.env` 中配置：
 
 ```text
-OPENROUTER_API_KEY=
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-MODEL_NAME=deepseek/deepseek-v4-flash:free
+LLM_API_KEY=
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
 ```
+
+当前推荐用 DeepSeek 官方 OpenAI-compatible API 临时承接清洗任务。未来切换本地或内网模型时，只需要替换 `LLM_BASE_URL`、`LLM_MODEL` 和按需填写 `LLM_API_KEY`。旧的 `OPENROUTER_*` 与 `MODEL_NAME` 变量仍兼容，已有 `.env` 不会失效。
 
 ## 无 API Key 验证
 

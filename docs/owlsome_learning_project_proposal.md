@@ -221,7 +221,7 @@ Sprint 规划建议：
 
 1. 基于当前知识点内容构造问答上下文。
 2. 无 API Key 时使用离线模板回答。
-3. 有 OpenRouter API Key 时调用 LLM。
+3. 有 DeepSeek 或其他 OpenAI-compatible API Key 时调用 LLM。
 4. 保存问答日志，便于展示交互历史。
 
 验收标准：
@@ -694,7 +694,7 @@ Sprint 规划建议：
 - react-markdown
 - KaTeX
 - MinerU 相关解析能力
-- OpenRouter/OpenAI-compatible API，可选
+- DeepSeek/OpenAI-compatible API，可选
 - GitHub 仓库
 - Docker / Docker Compose，Stage 5 用于一键部署和本地复现
 

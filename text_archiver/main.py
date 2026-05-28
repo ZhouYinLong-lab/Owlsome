@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Markdown 文本校对工具 - 基于 OpenRouter 大模型 API 的文档格式化，支持断点续传与 diff 对比."""
+"""Markdown 文本校对工具 - 基于 OpenAI-compatible LLM API 的文档格式化，支持断点续传与 diff 对比."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -29,9 +29,13 @@ load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv(Path(__file__).with_name(".env"), override=True)
 
 # ================= 默认配置 =================
-API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-MODEL_NAME = os.getenv("OPENROUTER_MODEL") or os.getenv("MODEL_NAME", "deepseek/deepseek-v4-flash:free")
+API_KEY = os.getenv("LLM_API_KEY") or os.getenv("OPENROUTER_API_KEY", "")
+BASE_URL = os.getenv("LLM_BASE_URL") or os.getenv("OPENROUTER_BASE_URL", "https://api.deepseek.com")
+MODEL_NAME = (
+    os.getenv("LLM_MODEL")
+    or os.getenv("OPENROUTER_MODEL")
+    or os.getenv("MODEL_NAME", "deepseek-v4-flash")
+)
 CHUNK_SIZE = 4000
 OVERLAP_SIZE = 1  # 以段落为单位，不再需要字符级重叠
 MAX_RETRIES = 3
@@ -361,7 +365,7 @@ def main():
     )
     parser.add_argument("input", nargs="?", default="input.md", help="输入 Markdown 文件")
     parser.add_argument("-o", "--output", default="", help="输出文件（默认: <输入>_formatted.md）")
-    parser.add_argument("-k", "--api-key", default="", help="OpenRouter API Key")
+    parser.add_argument("-k", "--api-key", default="", help="OpenAI-compatible LLM API Key")
     parser.add_argument("--model", default="", help=f"模型（默认: {MODEL_NAME}）")
     parser.add_argument("--chunk-size", type=int, default=CHUNK_SIZE, help="分块字数")
     parser.add_argument("--overlap", type=int, default=OVERLAP_SIZE, help="重叠字数")
@@ -449,7 +453,7 @@ def main():
 
     api_key = args.api_key or API_KEY
     if not api_key:
-        print("[错误] 请设置 OPENROUTER_API_KEY 环境变量或使用 -k 参数")
+        print("[错误] 请设置 LLM_API_KEY 环境变量或使用 -k 参数；旧 OPENROUTER_API_KEY 仍兼容。")
         sys.exit(1)
 
     started_at = datetime.now()

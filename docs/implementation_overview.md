@@ -79,7 +79,7 @@ The API and CLI share `learning_platform/backend/app/pipelines/calculus_full_imp
 ## Current LLM Boundaries
 
 - PDF parsing: delegated to MinerU APIs.
-- Markdown cleanup: LLM via OpenRouter-compatible chat completions.
+- Markdown cleanup: LLM via DeepSeek or another OpenAI-compatible chat completion provider.
 - Learning Q&A: optional LLM; deterministic offline fallback is always available.
 - Structure extraction in the demo: rule-based first, LLM-ready later.
 
