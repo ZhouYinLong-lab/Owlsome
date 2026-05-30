@@ -45,6 +45,8 @@ UNIT_MARKER_RE = re.compile(
     re.MULTILINE,
 )
 GENERIC_HEADING_RE = re.compile(r"^(#{1,3})\s+(.+)$", re.MULTILINE)
+LONG_POINT_THRESHOLD = 18000
+TARGET_SPLIT_CHARS = 12000
 
 
 def normalize_title(title: str) -> str:
@@ -234,18 +236,64 @@ def _points_from_matches(markdown: str, matches: list[re.Match[str]]) -> list[Se
         if len(body) < 40:
             continue
         units = split_units(body)
-        points.append(
+        point = SegmentedKnowledgePoint(
+            code=code,
+            title=title[:120],
+            summary=summarize(code, title, units),
+            raw_markdown=body,
+            difficulty=2,
+            tags=make_tags(title, units),
+            units=units,
+        )
+        points.extend(split_oversized_point(point))
+    return points
+
+
+def split_oversized_point(point: SegmentedKnowledgePoint) -> list[SegmentedKnowledgePoint]:
+    """Conservatively split very long points only at already detected unit boundaries.
+
+    The full-book importer should make the demo easier to browse, but it must not
+    invent semantic boundaries. If a long section has no stable definition /
+    theorem / example / exercise markers, keep it intact and let the QA report
+    flag it for manual review.
+    """
+    if len(point.raw_markdown) <= LONG_POINT_THRESHOLD or len(point.units) < 6:
+        return [point]
+
+    chunks: list[list[SegmentedUnit]] = []
+    current: list[SegmentedUnit] = []
+    current_len = 0
+    for unit in point.units:
+        unit_len = len(unit.content)
+        if current and current_len + unit_len > TARGET_SPLIT_CHARS:
+            chunks.append(current)
+            current = []
+            current_len = 0
+        current.append(unit)
+        current_len += unit_len
+    if current:
+        chunks.append(current)
+
+    if len(chunks) < 2:
+        return [point]
+
+    split_points: list[SegmentedKnowledgePoint] = []
+    for index, chunk_units in enumerate(chunks, start=1):
+        code = f"{point.code}-{index}"
+        title = f"{point.title}（{index}）"
+        raw_markdown = "\n\n".join(unit.content for unit in chunk_units)
+        split_points.append(
             SegmentedKnowledgePoint(
                 code=code,
                 title=title[:120],
-                summary=summarize(code, title, units),
-                raw_markdown=body,
-                difficulty=2,
-                tags=make_tags(title, units),
-                units=units,
+                summary=summarize(code, title, chunk_units),
+                raw_markdown=raw_markdown,
+                difficulty=point.difficulty,
+                tags=[*point.tags, "二次切分"],
+                units=chunk_units,
             )
         )
-    return points
+    return split_points
 
 
 def segment_markdown(markdown: str) -> list[SegmentedKnowledgePoint]:

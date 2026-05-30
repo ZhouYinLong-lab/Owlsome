@@ -13,6 +13,14 @@ COURSE_NAME = "微积分 II（第四版）"
 DEFAULT_REPORT = PROJECT_ROOT / "docs" / "test_records" / "calculus_full_import_report.md"
 
 
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write reports via replace so Windows file previews do not block truncation."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    tmp_path.write_text(text, encoding="utf-8")
+    tmp_path.replace(path)
+
+
 def resolve_full_textbook_input(path: str | None = None) -> Path:
     if path:
         return Path(path)
@@ -102,7 +110,7 @@ def write_report(path: Path, input_path: Path, chapters: list[SegmentedChapter],
         "- 抽查例题和习题 marker，确认分类符合教材语义。",
         "- 本报告只验证结构规则，不等价于数学内容审校。",
     ])
-    path.write_text("\n".join(lines), encoding="utf-8")
+    atomic_write_text(path, "\n".join(lines))
 
 
 def reset_course(course_name: str = COURSE_NAME) -> None:

@@ -105,6 +105,7 @@ Important files:
 | `app/services/retrieval.py` | optional BGE embedding/reranker adapter |
 | `scripts/seed_demo.py` | one-command demo data preparation |
 | `scripts/import_calculus_full.py` | full cleaned Calculus II structural import probe/import |
+| `scripts/content_quality_audit.py` | full Calculus II content QA and second-pass split audit report |
 | `scripts/retrieval_probe.py` | CLI validation for optional retrieval matching |
 
 ### Database Concept Map
@@ -221,6 +222,15 @@ D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Z
 - full-book structural splitting for chapters, sections, definitions, theorems, examples, and exercises
 
 The segmentation is rule-first. LLM enhancement is planned but must not be required for offline demo.
+
+Content QA report:
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\content_quality_audit.py --report D:\Projects\EL\docs\test_records\calculus_content_quality_audit.md
+```
+
+The QA script checks the full-textbook split for long knowledge points, weak marker recognition, very short sections, and formula delimiter balance. It also records any conservative second-pass splits performed by the segmenter.
 
 ## 7. Contribution Workflow
 
@@ -356,6 +366,22 @@ cd D:\Projects\EL\learning_platform\backend
 python scripts\import_calculus_full.py --import --reset-course
 ```
 
+Content QA:
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\content_quality_audit.py --report D:\Projects\EL\docs\test_records\calculus_content_quality_audit.md
+```
+
+### Competition Demo Paths
+
+```text
+D:\Projects\EL\docs\demo\demo_paths.md
+D:\Projects\EL\docs\demo\competition_demo_script_5min.md
+```
+
+Use these two files for the stable five-minute story: public textbook import, private learning space, and contribution review loop.
+
 ## 10. Validation Checklist
 
 Use these checks after meaningful backend/frontend changes:
@@ -383,7 +409,7 @@ Manual browser checks:
 
 - learner mode hides admin review/system tabs
 - admin mode shows review center and system overview
-- public resource tree expands/collapses
+- public resource tree expands/collapses, search filters by chapter/point/summary/tags, and detail pages show breadcrumb context
 - personal space tree expands/collapses
 - Markdown formulas and callouts render
 - contribution approval creates community-labeled content
@@ -401,8 +427,8 @@ Manual browser checks:
 ## 12. Known Near-Term Work
 
 1. Persist frontend tab/tree state in URL or localStorage for better collaboration and demos.
-2. Add search and filtering to public/personal resource trees.
-3. Run content QA on the productized full Calculus II import and mark any oversized or marker-poor knowledge points for second-pass splitting.
+2. Add search and filtering to personal resource trees.
+3. Review `calculus_content_quality_audit.md` and manually tune any remaining marker-poor or formula-risk knowledge points.
 4. Add real backend role checks after 南哪小帮手 login integration.
 5. Connect optional BGE retrieval to question-to-knowledge-point matching once the service is deployed.
 6. Add a formal migration path before moving from SQLite to PostgreSQL.

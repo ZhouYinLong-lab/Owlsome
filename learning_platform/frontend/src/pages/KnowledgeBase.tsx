@@ -9,6 +9,7 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
+  Search,
   Send,
   Upload
 } from "lucide-react";
@@ -26,6 +27,18 @@ function groupPointsByChapter(points: KnowledgePoint[]) {
   return [...groups.entries()].map(([chapter, chapterPoints]) => ({ chapter, points: chapterPoints }));
 }
 
+function pointMatches(point: KnowledgePoint, chapter: string, query: string) {
+  if (!query.trim()) return true;
+  const text = [
+    chapter,
+    point.code,
+    point.title,
+    point.summary,
+    point.tags
+  ].join(" ").toLowerCase();
+  return text.includes(query.trim().toLowerCase());
+}
+
 export function KnowledgeBase(props: {
   points: KnowledgePoint[];
   selectedId: number | null;
@@ -34,9 +47,20 @@ export function KnowledgeBase(props: {
   onRefresh: () => void;
 }) {
   const chapters = useMemo(() => groupPointsByChapter(props.points), [props.points]);
+  const [query, setQuery] = useState("");
   const [mathOpen, setMathOpen] = useState(true);
   const [courseOpen, setCourseOpen] = useState(true);
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set());
+  const filteredChapters = useMemo(
+    () => chapters
+      .map((group) => ({
+        ...group,
+        points: group.points.filter((point) => pointMatches(point, group.chapter, query))
+      }))
+      .filter((group) => group.points.length > 0),
+    [chapters, query]
+  );
+  const visiblePointCount = filteredChapters.reduce((sum, group) => sum + group.points.length, 0);
   const communityUnits = props.detail?.units.filter((unit) => unit.source?.startsWith("community_contribution:")).length ?? 0;
   const sourceTags = props.detail
     ? Array.from(new Set(props.detail.units.map((unit) => sourceLabel(unit.source)).filter(Boolean)))
@@ -45,12 +69,16 @@ export function KnowledgeBase(props: {
   useEffect(() => {
     setOpenChapters((current) => {
       const next = new Set(current);
-      if (next.size === 0 && chapters[0]) next.add(chapters[0].chapter);
+      const visibleChapters = query.trim() ? filteredChapters : chapters;
+      if (query.trim()) {
+        for (const group of filteredChapters) next.add(group.chapter);
+      }
+      if (next.size === 0 && visibleChapters[0]) next.add(visibleChapters[0].chapter);
       const selectedChapter = chapters.find((group) => group.points.some((point) => point.id === props.selectedId));
       if (selectedChapter) next.add(selectedChapter.chapter);
       return next;
     });
-  }, [chapters, props.selectedId]);
+  }, [chapters, filteredChapters, props.selectedId, query]);
 
   function toggleChapter(chapter: string) {
     setOpenChapters((current) => {
@@ -73,6 +101,15 @@ export function KnowledgeBase(props: {
             <RefreshCw size={17} />
           </button>
         </div>
+        <label className="resourceSearch">
+          <Search size={16} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜索章节、知识点、标签"
+            aria-label="搜索公共资源"
+          />
+        </label>
         <div className="resourceTree">
           <button className="treeNode root" onClick={() => setMathOpen((value) => !value)}>
             {mathOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -84,7 +121,11 @@ export function KnowledgeBase(props: {
               <BookOpen size={16} /> 微积分 II（第四版）
             </button>
             <div className={courseOpen ? "treeChildren open" : "treeChildren"}>
-              {chapters.map((group) => {
+              {query.trim() && <small className="treeMeta">找到 {visiblePointCount} 个知识点</small>}
+              {filteredChapters.length === 0 && (
+                <div className="treePoint placeholder">没有匹配的知识点。</div>
+              )}
+              {filteredChapters.map((group) => {
                 const chapterOpen = openChapters.has(group.chapter);
                 return (
                   <div className="treeGroup" key={group.chapter}>
@@ -165,6 +206,12 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   return (
     <div className="detailPane">
       <div className="detailHeader">
+        <nav className="breadcrumb" aria-label="当前位置">
+          <span>数学</span>
+          <span>{detail.course_name || "微积分 II（第四版）"}</span>
+          <span>{detail.chapter_title || "未分章资源"}</span>
+          <span>{detail.code} <InlineMarkdown>{detail.title}</InlineMarkdown></span>
+        </nav>
         <span>{detail.code}</span>
         <h2><InlineMarkdown>{detail.title}</InlineMarkdown></h2>
         <p>{detail.summary}</p>

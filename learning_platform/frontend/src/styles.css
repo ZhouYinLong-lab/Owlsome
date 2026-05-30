@@ -424,6 +424,34 @@ select:focus-visible {
   border-radius: 8px;
 }
 
+.resourceSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-top: 12px;
+  padding: 0 10px;
+  color: var(--color-nju-purple);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.resourceSearch input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 8px 0;
+  color: var(--color-text);
+  background: transparent;
+}
+
+.resourceSearch:focus-within {
+  border-color: var(--color-nju-purple);
+  box-shadow: 0 0 0 3px var(--color-nju-purple-soft);
+}
+
 .treeNode {
   width: 100%;
   border: 0;
@@ -576,6 +604,27 @@ select:focus-visible {
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 12px;
   margin-bottom: 14px;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.breadcrumb span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.breadcrumb span:not(:last-child)::after {
+  content: "/";
+  margin-left: 6px;
+  color: var(--color-border-strong);
 }
 
 .resourceTags {

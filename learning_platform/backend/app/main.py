@@ -135,7 +135,19 @@ def knowledge_points() -> list[dict]:
 def knowledge_point_detail(knowledge_point_id: int) -> dict:
     with get_connection() as conn:
         point = row_to_dict(
-            conn.execute("SELECT * FROM knowledge_points WHERE id = ?", (knowledge_point_id,)).fetchone()
+            conn.execute(
+                """
+                SELECT
+                    kp.*,
+                    c.title AS chapter_title,
+                    cr.name AS course_name
+                FROM knowledge_points kp
+                JOIN chapters c ON c.id = kp.chapter_id
+                JOIN courses cr ON cr.id = c.course_id
+                WHERE kp.id = ?
+                """,
+                (knowledge_point_id,),
+            ).fetchone()
         )
         if not point:
             raise HTTPException(status_code=404, detail="知识点不存在")

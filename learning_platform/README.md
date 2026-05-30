@@ -85,6 +85,22 @@ python scripts\seed_demo.py --all
 - 公共知识点详情页已有 1 条“社区贡献”。
 - 首页统计卡片显示 pending / approved / community 内容。
 
+## 比赛前推荐准备命令
+
+如果需要展示完整《微积分 II》公共资源库，建议按下面顺序做一次结构预检、内容 QA 和真实导入：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\import_calculus_full.py --dry-run --report D:\Projects\EL\docs\test_records\calculus_full_import_report.md
+python scripts\content_quality_audit.py --report D:\Projects\EL\docs\test_records\calculus_content_quality_audit.md
+python scripts\import_calculus_full.py --import --reset-course
+```
+
+对应演示材料：
+
+- `D:\Projects\EL\docs\demo\demo_paths.md`
+- `D:\Projects\EL\docs\demo\competition_demo_script_5min.md`
+
 ## 微积分 II 全书结构化导入
 
 完整清洗版教材可先用纯规则脚本做 dry-run，不调用 LLM、不写数据库，只生成结构化验收报告：
@@ -111,7 +127,15 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/import/calculus-full -C
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/import/calculus-full -ContentType "application/json" -Body '{"dry_run":false,"reset_course":true,"write_report":true}'
 ```
 
-第一版规则导入会优先读取本地 `merged_full_formatted.md`，识别章、节/小节、定义、定理、例题和习题，并生成 Markdown 验收报告。它不做数学内容审校，也不自动判定题目与知识点的高精度关联。
+第一版规则导入会优先读取本地 `merged_full_formatted.md`，识别章、节/小节、定义、定理、例题和习题，并生成 Markdown 验收报告。当前 dry-run 在清洗版《微积分 II》中识别出 6 章、76 个知识点和 638 个内容单元。它不做数学内容审校，也不自动判定题目与知识点的高精度关联。
+
+公共资源库页面支持按章节树浏览完整第 5–10 章，也支持搜索章节标题、知识点编号、标题、摘要和标签。知识点详情页顶部会显示面包屑，例如：
+
+```text
+数学 / 微积分 II（第四版） / 第 5 章 多元函数微分学 / 5.1.1 点集基本知识
+```
+
+内容 QA 报告会标记过长、过短、公式符号疑似不平衡或 marker 识别不足的知识点。二次切分只在已有定义/定理/例题/习题等稳定边界上进行；无法可靠切分的内容会进入人工复核队列。
 
 ## 个人学习空间
 

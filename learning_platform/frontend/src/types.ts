@@ -36,6 +36,7 @@ export type KnowledgePoint = {
   content_count: number;
   approved_note_count: number;
   chapter_title?: string;
+  course_name?: string;
 };
 
 export type ContentUnit = {
