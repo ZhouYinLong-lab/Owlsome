@@ -1,16 +1,3 @@
-export type Stats = {
-  courses: number;
-  knowledge_points: number;
-  content_units: number;
-  pending_notes: number;
-  approved_notes: number;
-  qa_logs: number;
-  personal_spaces: number;
-  pending_contributions: number;
-  approved_contributions: number;
-  community_content_units: number;
-};
-
 export type CalculusFullImportResult = {
   ok: boolean;
   message: string;
@@ -127,5 +114,60 @@ export type Contribution = {
   content_preview?: string;
 };
 
-export type Tab = "dashboard" | "knowledge" | "personal" | "pipeline" | "review" | "system";
+export type Stats = {
+  courses: number;
+  knowledge_points: number;
+  content_units: number;
+  pending_notes: number;
+  approved_notes: number;
+  qa_logs: number;
+  personal_spaces: number;
+  pending_contributions: number;
+  approved_contributions: number;
+  community_content_units: number;
+  exercises: number;
+  linked_exercises: number;
+  exercise_attempts: number;
+};
+
+export type Exercise = {
+  id: number;
+  title: string;
+  stem: string;
+  answer: string;
+  analysis: string;
+  exercise_type: string;
+  difficulty: number;
+  source: string;
+  status: string;
+  created_at: string;
+  link_confidence?: number;
+  link_reason?: string;
+};
+
+export type ExerciseRecommendation = {
+  knowledge_point_id: number;
+  code: string;
+  title: string;
+  score: number;
+  reason: string;
+};
+
+export type ExerciseRecommendResponse = {
+  candidates: ExerciseRecommendation[];
+  provider: string;
+  fallback: boolean;
+  reason: string;
+};
+
+export type ExerciseAttempt = {
+  id: number;
+  exercise_id: number;
+  knowledge_point_id: number | null;
+  result: string;
+  note: string;
+  created_at: string;
+};
+
+export type Tab = "dashboard" | "knowledge" | "personal" | "pipeline" | "review" | "system" | "exercises";
 export type Role = "learner" | "admin";

@@ -143,6 +143,27 @@ Copy to `.env` and edit for LAN or server deployment. All API calls go through `
 - **PDF parsing**: pre-generated MinerU Markdown only; live PDF upload → parse → segment is not v0.1.
 - **Login**: not implemented; authentication and session management are future work.
 
+## Stage 4: Exercise-Knowledge Point Linking MVP
+
+```text
+题目录入
+→ keyword/retrieval Top-K 推荐
+→ 管理员人工确认绑定
+→ 知识点详情页展示关联练习
+→ 学习者提交 correct/wrong/unsure
+→ 记录 exercise_attempts
+```
+
+Key files:
+- `app/services/exercises.py` — creation, keyword/recommend, linking, attempts
+- `app/models.py` — ExerciseCreate, ExerciseRecommendRequest, ExerciseLinkRequest, ExerciseAttemptCreate
+- API: `POST /api/exercises`, `POST /api/exercises/recommend`, `POST /api/exercises/{id}/link`, `POST /api/exercises/{id}/attempts`
+- Frontend: `ExerciseManager.tsx` (admin-only), exercise section in KnowledgeBase detail pane
+
+Matching: retrieval adapter first (if available), keyword fallback always present. Admin confirmation required for binding.
+
+Full doc: `docs/stage4/exercise_knowledge_linking_mvp.md`
+
 ## Obsidian Reuse Strategy
 
 Documents should remain usable outside Owlsome:

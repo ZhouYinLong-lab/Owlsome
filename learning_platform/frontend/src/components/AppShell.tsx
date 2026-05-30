@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, FlaskConical, FolderTree, Home, Loader2, Play, ShieldCheck, UserRound } from "lucide-react";
+import { BarChart3, BookOpen, Dumbbell, FlaskConical, FolderTree, Home, Loader2, Play, ShieldCheck, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Role, Tab } from "../types";
 import { pageMeta } from "../utils/labels";
@@ -47,6 +47,9 @@ export function AppShell({ role, tab, busy, message, onRoleChange, onTabChange, 
               </button>
               <button className={tab === "system" ? "active" : ""} onClick={() => onTabChange("system")} title="系统概览">
                 <BarChart3 size={18} /> 系统概览
+              </button>
+              <button className={tab === "exercises" ? "active" : ""} onClick={() => onTabChange("exercises")} title="题目管理">
+                <Dumbbell size={18} /> 题目管理
               </button>
             </>
           )}

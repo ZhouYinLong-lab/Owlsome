@@ -26,6 +26,9 @@ export function SystemOverview({
     ["待审核贡献", stats?.pending_contributions ?? 0, ShieldCheck],
     ["已合并贡献", stats?.approved_contributions ?? 0, Upload],
     ["社区内容", stats?.community_content_units ?? 0, Layers],
+    ["题目", stats?.exercises ?? 0, Upload],
+    ["已绑定题目", stats?.linked_exercises ?? 0, Check],
+    ["练习尝试", stats?.exercise_attempts ?? 0, MessageSquare],
     ["问答记录", stats?.qa_logs ?? 0, MessageSquare]
   ] as const;
 

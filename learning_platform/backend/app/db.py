@@ -189,6 +189,43 @@ def init_db() -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(contribution_id) REFERENCES contributions(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS exercises (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL DEFAULT '',
+                stem TEXT NOT NULL,
+                answer TEXT NOT NULL DEFAULT '',
+                analysis TEXT NOT NULL DEFAULT '',
+                exercise_type TEXT NOT NULL DEFAULT 'practice',
+                difficulty INTEGER NOT NULL DEFAULT 2,
+                source TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'draft',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS exercise_knowledge_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                exercise_id INTEGER NOT NULL,
+                knowledge_point_id INTEGER NOT NULL,
+                confidence REAL NOT NULL DEFAULT 0,
+                reason TEXT NOT NULL DEFAULT '',
+                confirmed_by TEXT NOT NULL DEFAULT 'local_admin',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(exercise_id) REFERENCES exercises(id) ON DELETE CASCADE,
+                FOREIGN KEY(knowledge_point_id) REFERENCES knowledge_points(id) ON DELETE CASCADE,
+                UNIQUE(exercise_id, knowledge_point_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS exercise_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                exercise_id INTEGER NOT NULL,
+                knowledge_point_id INTEGER,
+                result TEXT NOT NULL,
+                note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(exercise_id) REFERENCES exercises(id) ON DELETE CASCADE,
+                FOREIGN KEY(knowledge_point_id) REFERENCES knowledge_points(id) ON DELETE SET NULL
+            );
             """
         )
 

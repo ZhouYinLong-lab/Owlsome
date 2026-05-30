@@ -130,3 +130,48 @@ class ContributionCreateFromPersonalPoint(BaseModel):
 class ContributionReviewRequest(BaseModel):
     comment: str = Field(default="", max_length=500)
     target_knowledge_point_id: int | None = None
+
+
+# ── Exercise models ──────────────────────────────────────────────
+
+class ExerciseCreate(BaseModel):
+    title: str = Field(default="", max_length=200)
+    stem: str = Field(min_length=2, max_length=8000)
+    answer: str = Field(default="", max_length=8000)
+    analysis: str = Field(default="", max_length=8000)
+    exercise_type: str = Field(default="practice", pattern="^(practice|homework|exam)$")
+    difficulty: int = Field(default=2, ge=1, le=5)
+    source: str = Field(default="", max_length=200)
+
+
+class ExerciseRecommendRequest(BaseModel):
+    exercise_id: int | None = None
+    stem: str | None = None
+    top_k: int = Field(default=3, ge=1, le=10)
+
+
+class ExerciseRecommendCandidate(BaseModel):
+    knowledge_point_id: int
+    code: str
+    title: str
+    score: float
+    reason: str
+
+
+class ExerciseRecommendResponse(BaseModel):
+    candidates: list[ExerciseRecommendCandidate]
+    provider: str
+    fallback: bool
+    reason: str
+
+
+class ExerciseLinkRequest(BaseModel):
+    knowledge_point_id: int
+    confidence: float = Field(default=1.0, ge=0, le=1.0)
+    reason: str = Field(default="", max_length=500)
+
+
+class ExerciseAttemptCreate(BaseModel):
+    knowledge_point_id: int | None = None
+    result: str = Field(pattern="^(correct|wrong|unsure)$")
+    note: str = Field(default="", max_length=1000)

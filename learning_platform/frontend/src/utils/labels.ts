@@ -67,6 +67,10 @@ export function pageMeta(tab: Tab, role: Role) {
     system: {
       eyebrow: "系统概览",
       title: "查看演示数据、导入状态和运行指标"
+    },
+    exercises: {
+      eyebrow: "管理员工作台",
+      title: "管理题目并绑定到知识点"
     }
   };
   return meta[tab];

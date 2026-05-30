@@ -9,6 +9,10 @@ from app.models import (
     CalculusFullImportResult,
     ContributionCreateFromPersonalPoint,
     ContributionReviewRequest,
+    ExerciseAttemptCreate,
+    ExerciseCreate,
+    ExerciseLinkRequest,
+    ExerciseRecommendRequest,
     ImportResult,
     NoteCreate,
     PersonalProgressUpdate,
@@ -19,6 +23,7 @@ from app.models import (
 from app.pipelines.calculus_full_importer import import_calculus_full
 from app.pipelines.importer import import_sample
 from app.services import contributions
+from app.services import exercises as exercise_service
 from app.services.notes import approve_note, create_note, pending_notes, reject_note
 from app.services.personal import (
     create_space_from_markdown_bytes,
@@ -79,6 +84,9 @@ def stats() -> dict:
             "community_content_units": conn.execute(
                 "SELECT COUNT(*) AS count FROM content_units WHERE source LIKE 'community_contribution:%'"
             ).fetchone()["count"],
+            "exercises": conn.execute("SELECT COUNT(*) AS count FROM exercises").fetchone()["count"],
+            "linked_exercises": conn.execute("SELECT COUNT(*) AS count FROM exercises WHERE status = 'linked'").fetchone()["count"],
+            "exercise_attempts": conn.execute("SELECT COUNT(*) AS count FROM exercise_attempts").fetchone()["count"],
         }
 
 
@@ -309,3 +317,53 @@ def request_revision_contribution_api(contribution_id: int, payload: Contributio
     if not contribution:
         raise HTTPException(status_code=404, detail="贡献不存在")
     return contribution
+
+
+# ── Exercise endpoints ──────────────────────────────────────────
+
+@app.post("/api/exercises")
+def create_exercise_api(payload: ExerciseCreate) -> dict:
+    return exercise_service.create_exercise(payload)
+
+
+@app.get("/api/exercises")
+def list_exercises_api() -> list[dict]:
+    return exercise_service.list_exercises()
+
+
+@app.get("/api/exercises/{exercise_id}")
+def get_exercise_api(exercise_id: int) -> dict:
+    exercise = exercise_service.get_exercise(exercise_id)
+    if not exercise:
+        raise HTTPException(status_code=404, detail="题目不存在")
+    return exercise
+
+
+@app.post("/api/exercises/recommend")
+def recommend_exercise_api(payload: ExerciseRecommendRequest) -> dict:
+    try:
+        result = exercise_service.recommend_knowledge_points(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result.model_dump()
+
+
+@app.post("/api/exercises/{exercise_id}/link")
+def link_exercise_api(exercise_id: int, payload: ExerciseLinkRequest) -> dict:
+    try:
+        return exercise_service.link_exercise(exercise_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/knowledge-points/{knowledge_point_id}/exercises")
+def knowledge_point_exercises_api(knowledge_point_id: int) -> list[dict]:
+    return exercise_service.list_exercises_for_knowledge_point(knowledge_point_id)
+
+
+@app.post("/api/exercises/{exercise_id}/attempts")
+def create_attempt_api(exercise_id: int, payload: ExerciseAttemptCreate) -> dict:
+    try:
+        return exercise_service.create_attempt(exercise_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

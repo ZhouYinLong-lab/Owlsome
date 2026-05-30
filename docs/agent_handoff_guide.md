@@ -123,6 +123,9 @@ erDiagram
   contributions ||--o{ contribution_units : contains
   contributions ||--o{ contribution_reviews : records
   contributions }o--|| knowledge_points : targets
+  exercises ||--o{ exercise_knowledge_links : linked_by
+  knowledge_points ||--o{ exercise_knowledge_links : links_to
+  exercises ||--o{ exercise_attempts : records
 ```
 
 ### Core API Groups
@@ -137,6 +140,7 @@ erDiagram
 | Personal points | `GET /api/personal-spaces/{space_id}/knowledge-points/{point_id}`, `POST /api/personal-spaces/{space_id}/knowledge-points/{point_id}/progress` |
 | Personal Q&A | `POST /api/personal-spaces/{space_id}/qa` |
 | Contributions | `POST /api/contributions/from-personal-point`, `GET /api/contributions/pending`, `GET /api/contributions/{id}`, `POST /api/contributions/{id}/approve`, `POST /api/contributions/{id}/reject`, `POST /api/contributions/{id}/request-revision` |
+| Exercises | `POST /api/exercises`, `GET /api/exercises`, `GET /api/exercises/{id}`, `POST /api/exercises/recommend`, `POST /api/exercises/{id}/link`, `GET /api/knowledge-points/{id}/exercises`, `POST /api/exercises/{id}/attempts` |
 
 ## 5. Learning Platform Frontend
 

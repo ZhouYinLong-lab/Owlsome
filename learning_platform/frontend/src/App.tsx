@@ -6,6 +6,7 @@ import { KnowledgeBase } from "./pages/KnowledgeBase";
 import { PersonalSpaces } from "./pages/PersonalSpaces";
 import { Pipeline } from "./pages/Pipeline";
 import { ReviewCenter } from "./pages/ReviewCenter";
+import { ExerciseManager } from "./pages/ExerciseManager";
 import { SystemOverview } from "./pages/SystemOverview";
 import type {
   CalculusFullImportResult,
@@ -120,7 +121,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (role === "learner" && (tab === "review" || tab === "system")) {
+    if (role === "learner" && (tab === "review" || tab === "system" || tab === "exercises")) {
       setTab("dashboard");
     }
   }, [role, tab]);
@@ -255,6 +256,7 @@ export function App() {
           fullImportResult={fullImportResult}
         />
       )}
+      {tab === "exercises" && role === "admin" && <ExerciseManager />}
       {tab === "pipeline" && <Pipeline />}
     </AppShell>
   );

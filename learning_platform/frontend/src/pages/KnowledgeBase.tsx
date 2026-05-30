@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
+  CheckCircle,
   ChevronDown,
   ChevronRight,
+  Dumbbell,
   FolderTree,
   HelpCircle,
   Layers,
@@ -11,11 +13,12 @@ import {
   RefreshCw,
   Search,
   Send,
-  Upload
+  Upload,
+  XCircle
 } from "lucide-react";
 import { api } from "../api";
 import { InlineMarkdown, Markdown } from "../components/MarkdownRenderer";
-import type { KnowledgePoint, KnowledgePointDetail } from "../types";
+import type { Exercise, KnowledgePoint, KnowledgePointDetail } from "../types";
 import { sourceLabel, unitLabel } from "../utils/labels";
 
 function groupPointsByChapter(points: KnowledgePoint[]) {
@@ -170,8 +173,24 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   const [noteContent, setNoteContent] = useState("二重极限要检查不同路径趋近时的结果是否一致，不能只看一条直线。");
   const [busy, setBusy] = useState("");
 
+  // Linked exercises
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [showAnswer, setShowAnswer] = useState<Set<number>>(new Set());
+  const [attemptResult, setAttemptResult] = useState<Record<number, string>>({});
+
   useEffect(() => {
     setAnswer("");
+    setExercises([]);
+    setShowAnswer(new Set());
+    setAttemptResult({});
+  }, [detail?.id]);
+
+  useEffect(() => {
+    if (detail?.id) {
+      api<Exercise[]>(`/api/knowledge-points/${detail.id}/exercises`)
+        .then(setExercises)
+        .catch(() => setExercises([]));
+    }
   }, [detail?.id]);
 
   if (!detail) {
@@ -268,6 +287,102 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
             <p>{note.content}</p>
           </div>
         ))}
+      </section>
+
+      <section className="linkedExercises">
+        <h3><Dumbbell size={18} /> 关联练习</h3>
+        {exercises.length === 0 ? (
+          <p>暂无关联练习。</p>
+        ) : (
+          exercises.map((ex) => {
+            const result = attemptResult[ex.id];
+            return (
+              <div className="exerciseCard" key={ex.id}>
+                <div className="exerciseHead">
+                  <strong>#{ex.id} {ex.title || "练习题"}</strong>
+                  <span className="difficultyBadge">难度 {ex.difficulty}</span>
+                </div>
+                <p className="exerciseStem">{ex.stem}</p>
+                {(ex.answer || ex.analysis) && (
+                  <button
+                    className="ghostButton"
+                    style={{ fontSize: "0.85rem" }}
+                    onClick={() => {
+                      setShowAnswer((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ex.id)) next.delete(ex.id);
+                        else next.add(ex.id);
+                        return next;
+                      });
+                    }}
+                  >
+                    {showAnswer.has(ex.id) ? "收起答案与解析" : "查看答案与解析"}
+                  </button>
+                )}
+                {showAnswer.has(ex.id) && (
+                  <div className="exerciseAnswer">
+                    {ex.answer && <p><strong>答案：</strong>{ex.answer}</p>}
+                    {ex.analysis && <p><strong>解析：</strong>{ex.analysis}</p>}
+                  </div>
+                )}
+                {result ? (
+                  <p className="attemptFeedback">
+                    {result === "correct" ? <CheckCircle size={16} color="var(--color-success)" /> :
+                     result === "wrong" ? <XCircle size={16} color="var(--color-danger)" /> :
+                     <HelpCircle size={16} color="var(--color-warning)" />}
+                    已记录：
+                    {result === "correct" ? "做对了" : result === "wrong" ? "做错了" : "不确定"}
+                  </p>
+                ) : (
+                  <div className="exerciseActions">
+                    <button
+                      className="ghostButton"
+                      onClick={async () => {
+                        try {
+                          await api(`/api/exercises/${ex.id}/attempts`, {
+                            method: "POST",
+                            body: JSON.stringify({ knowledge_point_id: detail.id, result: "correct" })
+                          });
+                          setAttemptResult((prev) => ({ ...prev, [ex.id]: "correct" }));
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      <CheckCircle size={16} /> 做对
+                    </button>
+                    <button
+                      className="ghostButton"
+                      onClick={async () => {
+                        try {
+                          await api(`/api/exercises/${ex.id}/attempts`, {
+                            method: "POST",
+                            body: JSON.stringify({ knowledge_point_id: detail.id, result: "wrong" })
+                          });
+                          setAttemptResult((prev) => ({ ...prev, [ex.id]: "wrong" }));
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      <XCircle size={16} /> 做错
+                    </button>
+                    <button
+                      className="ghostButton"
+                      onClick={async () => {
+                        try {
+                          await api(`/api/exercises/${ex.id}/attempts`, {
+                            method: "POST",
+                            body: JSON.stringify({ knowledge_point_id: detail.id, result: "unsure" })
+                          });
+                          setAttemptResult((prev) => ({ ...prev, [ex.id]: "unsure" }));
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      <HelpCircle size={16} /> 不确定
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </section>
     </div>
   );
