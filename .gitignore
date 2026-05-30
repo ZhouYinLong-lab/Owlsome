@@ -46,3 +46,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Claude Code local config (not for commit)
+.claude/
+For claude.txt

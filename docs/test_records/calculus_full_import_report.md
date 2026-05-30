@@ -1,6 +1,6 @@
 # 微积分 II 全书结构化导入报告
 
-- 生成时间：2026-05-30 11:27:01
+- 生成时间：2026-05-30 19:29:52
 - 输入文件：`D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full_formatted.md`
 - 导入数据库：否，dry-run 仅生成报告
 - 执行入口：CLI 脚本

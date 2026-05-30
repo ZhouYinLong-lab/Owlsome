@@ -146,6 +146,13 @@ Frontend entrypoint:
 D:\Projects\EL\learning_platform\frontend\src\main.tsx
 ```
 
+### API Base URL Configuration
+
+The frontend reads `VITE_API_BASE_URL` from the environment at build time. Default: `http://127.0.0.1:8000`.
+
+- `D:\Projects\EL\learning_platform\frontend\src\api.ts` — single API definition, no hardcoded URLs in pages
+- `D:\Projects\EL\learning_platform\frontend\.env.example` — copy to `.env` and edit for LAN/server deployment
+
 The frontend is split into a thin app shell plus page-level components:
 
 | File | Purpose |
@@ -332,6 +339,19 @@ Expected result:
 - one pending contribution exists
 - one approved community contribution is visible in public detail
 
+### Smoke Test
+
+Quick API validation (no LLM key, no running server):
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\smoke_test.py
+```
+
+Tests: `GET /api/health`, `GET /api/stats`, `POST /api/import/sample`, `GET /api/knowledge-points`, `POST /api/personal-spaces/from-sample`, `GET /api/personal-spaces`.
+
+Each check prints `ok` or `FAIL` with the reason. Non-zero exit code on any failure.
+
 ### Full Calculus II Import
 
 Admin UI path:
@@ -392,6 +412,11 @@ python -m compileall D:\Projects\EL\learning_platform\backend\app D:\Projects\EL
 ```
 
 ```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\smoke_test.py
+```
+
+```powershell
 cd D:\Projects\EL\learning_platform\frontend
 npm run build
 ```
@@ -404,6 +429,12 @@ npm run build -- --outDir dist_check
 ```
 
 Delete `dist_check` afterwards; it is a temporary validation artifact and should not be committed.
+
+For the full v0.1 release checklist, see:
+
+```text
+D:\Projects\EL\docs\release\v0_1_release_checklist.md
+```
 
 Manual browser checks:
 
@@ -432,3 +463,15 @@ Manual browser checks:
 4. Add real backend role checks after 南哪小帮手 login integration.
 5. Connect optional BGE retrieval to question-to-knowledge-point matching once the service is deployed.
 6. Add a formal migration path before moving from SQLite to PostgreSQL.
+
+## 13. v0.1 Project Boundaries
+
+The current v0.1 release is intentionally scoped as a demo. Do not assume these capabilities exist:
+
+- **Admin mode is demo-level only**: the frontend role switch is presentation isolation, not backend authorization.
+- **SQLite local storage**: no PostgreSQL, no connection pooling, no production DB.
+- **LLM / BGE are optional**: all core flows (browse, import, QA, review) work without any API key.
+- **PDF real-time parsing is not v0.1**: the demo uses pre-generated MinerU Markdown. Live PDF upload → parse → segment is future work.
+- **No real login**: authentication and session management are not implemented.
+
+When making changes, preserve these boundaries. The v0.1 release checklist (`docs/release/v0_1_release_checklist.md`) defines the full acceptance criteria.

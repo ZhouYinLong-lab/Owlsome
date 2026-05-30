@@ -142,6 +142,21 @@ http://127.0.0.1:5173
 
 如果 `5173` 被占用，Vite 可能会切换到 `5174` 或其他端口；后端已经允许本地开发端口访问。
 
+配置前端 API 地址（可选，默认请求 `http://127.0.0.1:8000`）：
+
+```powershell
+cd D:\Projects\EL\learning_platform\frontend
+Copy-Item -Path D:\Projects\EL\learning_platform\frontend\.env.example -Destination D:\Projects\EL\learning_platform\frontend\.env
+```
+
+编辑 `D:\Projects\EL\learning_platform\frontend\.env`，按需修改：
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+局域网或服务器测试时，改为对应 IP 或域名。
+
 ### 4. 安装 text_archiver 依赖
 
 `text_archiver` 用于基于 LLM 清洗 Markdown，修复 PDF 转换后的断行、标题层级和格式问题。
@@ -287,6 +302,62 @@ cd D:\Projects\EL\learning_platform\backend
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
+## 常见问题
+
+### `ModuleNotFoundError: No module named app`
+
+后端启动时如果报这个错误，说明 Python 工作目录不对。请确保先 cd 到后端目录：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### 前端构建时 `dist` 被占用
+
+如果 `npm run build` 报 `EPERM: operation not permitted, unlink ...\frontend\dist\...`：
+
+1. 关闭正在运行的 `npm run dev`、`vite preview` 或打开了 `dist` 文件的编辑器。
+2. 关闭正在查看旧构建页面的浏览器标签页。
+3. 手动删除旧构建目录后重试：
+
+```powershell
+Remove-Item -LiteralPath D:\Projects\EL\learning_platform\frontend\dist -Recurse -Force
+cd D:\Projects\EL\learning_platform\frontend
+npm run build
+```
+
+如果只是想确认代码能否打包，可以输出到另一个目录：
+
+```powershell
+cd D:\Projects\EL\learning_platform\frontend
+npm run build -- --outDir dist_check
+```
+
+### `.env` 不要提交
+
+项目 `.gitignore` 已排除 `.env` 和 `*.env`，只允许 `.env.example`。复制示例后创建的 `.env` 不会被 Git 跟踪。提交前务必检查 `git status`。
+
+### 无 LLM Key 是否可用
+
+可以。不配置任何 LLM API Key 也能完整跑通 demo。问答会使用基于现有知识点内容的确定性回退逻辑。配置 DeepSeek 或其他 OpenAI-compatible API 后可增强问答效果。
+
+## 上线测试建议
+
+如果你要把 v0.1 部署到局域网或服务器供队友测试：
+
+1. **后端监听 0.0.0.0**：
+   ```powershell
+   cd D:\Projects\EL\learning_platform\backend
+   python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+
+2. **前端配置 `VITE_API_BASE_URL`**：按上文说明，将 `.env` 中的地址改为服务器 IP 或域名，然后执行 `npm run build`，用 `dist` 目录部署到任意静态文件服务。
+
+3. **不要暴露 SQLite 和 `.env`**：不要把 `learning_platform/backend/data/` 目录和 `.env` 文件放到公网可访问路径。
+
+4. **管理员模式只是前端演示隔离，不是真权限**：当前通过顶部开关切换角色，任何人都可以切到管理员模式。它仅用于演示审核流程，不代表后端已实现认证和授权。
+
 ## 功能规划
 
 ### Stage 1：本地 MVP 与比赛展示闭环
@@ -367,7 +438,14 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 ```powershell
 cd D:\Projects\EL
-python -m compileall D:\Projects\EL\learning_platform\backend\app
+python -m compileall D:\Projects\EL\learning_platform\backend\app D:\Projects\EL\learning_platform\backend\scripts
+```
+
+后端 smoke test（不依赖 LLM Key，不需要 uvicorn 已启动）：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\smoke_test.py
 ```
 
 前端生产构建：

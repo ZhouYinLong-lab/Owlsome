@@ -104,6 +104,45 @@ The three fixed paths are full textbook/public browsing, private learning space/
 - Learning Q&A: optional LLM; deterministic offline fallback is always available.
 - Structure extraction in the demo: rule-based first, LLM-ready later.
 
+## v0.1 Release
+
+### Release Checklist
+
+Full pre-release verification steps, acceptance criteria, and rollback plan:
+
+```text
+D:\Projects\EL\docs\release\v0_1_release_checklist.md
+```
+
+### Smoke Test
+
+Quick backend API validation without LLM key or running server:
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\smoke_test.py
+```
+
+Tests: health, stats, sample import, knowledge-points list, personal space creation, personal spaces list.
+
+### Frontend API Configuration
+
+The frontend reads `VITE_API_BASE_URL` at build time (default `http://127.0.0.1:8000`):
+
+```text
+D:\Projects\EL\learning_platform\frontend\.env.example
+```
+
+Copy to `.env` and edit for LAN or server deployment. All API calls go through `src/api.ts` — no hardcoded backend URLs in pages.
+
+### v0.1 Project Boundaries
+
+- **Admin mode**: frontend demo isolation only; not real backend authorization.
+- **Storage**: SQLite local file; no PostgreSQL or production DB.
+- **LLM / BGE**: optional; all core flows work without API keys.
+- **PDF parsing**: pre-generated MinerU Markdown only; live PDF upload → parse → segment is not v0.1.
+- **Login**: not implemented; authentication and session management are future work.
+
 ## Obsidian Reuse Strategy
 
 Documents should remain usable outside Owlsome:

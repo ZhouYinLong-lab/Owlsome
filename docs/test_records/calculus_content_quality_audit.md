@@ -1,6 +1,6 @@
 # 微积分 II 内容质量 QA 报告
 
-- 生成时间：2026-05-30 11:27:24
+- 生成时间：2026-05-30 19:29:59
 - 输入文件：`D:\Projects\EL\mineru_tools\output\20260523_113153_Wei Ji Fen II(Di Si Ban ) - Zhang Yun Qing\merged_full_formatted.md`
 - 检查方式：规则切分结果静态 QA，不调用 LLM，不等价于完整数学审校。
 - 长知识点阈值：18000 字符
