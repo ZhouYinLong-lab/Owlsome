@@ -140,7 +140,7 @@ erDiagram
 | Personal points | `GET /api/personal-spaces/{space_id}/knowledge-points/{point_id}`, `POST /api/personal-spaces/{space_id}/knowledge-points/{point_id}/progress` |
 | Personal Q&A | `POST /api/personal-spaces/{space_id}/qa` |
 | Contributions | `POST /api/contributions/from-personal-point`, `GET /api/contributions/pending`, `GET /api/contributions/{id}`, `POST /api/contributions/{id}/approve`, `POST /api/contributions/{id}/reject`, `POST /api/contributions/{id}/request-revision` |
-| Exercises | `POST /api/exercises`, `GET /api/exercises`, `GET /api/exercises/{id}`, `POST /api/exercises/recommend`, `POST /api/exercises/{id}/link`, `GET /api/knowledge-points/{id}/exercises`, `POST /api/exercises/{id}/attempts` |
+| Exercises | `POST /api/exercises`, `GET /api/exercises`, `GET /api/exercises/{id}`, `POST /api/exercises/recommend`, `POST /api/exercises/{id}/link`, `GET /api/knowledge-points/{id}/exercises`, `POST /api/exercises/{id}/attempts`, `GET /api/exercises/mistakes`, `GET /api/exercises/weak-points` |
 
 ## 5. Learning Platform Frontend
 
@@ -166,7 +166,7 @@ The frontend is split into a thin app shell plus page-level components:
 | `src/types.ts` | TypeScript data contracts |
 | `src/components/AppShell.tsx` | sidebar, topbar, local role switch |
 | `src/components/MarkdownRenderer.tsx` | Obsidian-compatible Markdown rendering |
-| `src/pages/Dashboard.tsx` | learner workbench |
+| `src/pages/Dashboard.tsx` | learner workbench with weak-point & mistake review loop |
 | `src/pages/KnowledgeBase.tsx` | public resource hierarchy and point detail |
 | `src/pages/PersonalSpaces.tsx` | upload/sample creation, private space tree, progress, contribution, QA |
 | `src/pages/Pipeline.tsx` | parsing/cleanup pipeline explanation |

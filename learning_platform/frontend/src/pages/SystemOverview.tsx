@@ -1,4 +1,4 @@
-import { BookOpen, Check, Database, FileText, Layers, Loader2, MessageSquare, Play, ShieldCheck, Upload } from "lucide-react";
+import { AlertTriangle, BookOpen, Check, Database, FileText, HelpCircle, Layers, Loader2, MessageSquare, Play, ShieldCheck, Upload, XCircle } from "lucide-react";
 import type { CalculusFullImportResult, Stats } from "../types";
 
 export function SystemOverview({
@@ -29,7 +29,10 @@ export function SystemOverview({
     ["题目", stats?.exercises ?? 0, Upload],
     ["已绑定题目", stats?.linked_exercises ?? 0, Check],
     ["练习尝试", stats?.exercise_attempts ?? 0, MessageSquare],
-    ["问答记录", stats?.qa_logs ?? 0, MessageSquare]
+    ["问答记录", stats?.qa_logs ?? 0, MessageSquare],
+    ["错题记录", stats?.mistake_attempts ?? 0, XCircle],
+    ["不确定记录", stats?.unsure_attempts ?? 0, HelpCircle],
+    ["薄弱知识点", stats?.weak_knowledge_points ?? 0, AlertTriangle]
   ] as const;
 
   return (

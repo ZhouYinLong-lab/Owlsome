@@ -128,6 +128,9 @@ export type Stats = {
   exercises: number;
   linked_exercises: number;
   exercise_attempts: number;
+  mistake_attempts: number;
+  unsure_attempts: number;
+  weak_knowledge_points: number;
 };
 
 export type Exercise = {
@@ -167,6 +170,31 @@ export type ExerciseAttempt = {
   result: string;
   note: string;
   created_at: string;
+};
+
+export type MistakeExercise = {
+  attempt_id: number;
+  exercise_id: number;
+  knowledge_point_id: number | null;
+  result: string;
+  note: string;
+  attempted_at: string;
+  exercise_title: string;
+  exercise_stem: string;
+  exercise_answer: string;
+  exercise_analysis: string;
+  knowledge_point_code: string | null;
+  knowledge_point_title: string | null;
+};
+
+export type WeakKnowledgePoint = {
+  knowledge_point_id: number;
+  code: string;
+  title: string;
+  wrong_count: number;
+  unsure_count: number;
+  total_weak_attempts: number;
+  latest_attempt_at: string;
 };
 
 export type Tab = "dashboard" | "knowledge" | "personal" | "pipeline" | "review" | "system" | "exercises";

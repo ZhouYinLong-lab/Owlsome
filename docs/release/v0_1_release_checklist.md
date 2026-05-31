@@ -26,7 +26,8 @@
 - 在线 PDF 实时解析（使用已有 MinerU Markdown 样例）
 - UI 大改 / 大型新功能
 - Docker 部署 / PostgreSQL 迁移
-- 题目-知识点高精度关联与错题闭环
+- 题目-知识点高精度关联（已实现基础版）
+- 错题与薄弱点闭环（已实现 MVP，含工作台展示与跳转复习）
 
 ## 2. 必跑命令
 
@@ -206,8 +207,9 @@ git clean -fd
 | Agent 接手指南 | `docs/agent_handoff_guide.md` | 架构与安全修改规则 |
 | 实现概览 | `docs/implementation_overview.md` | 模块边界与 API 清单 |
 | v0.1 发布检查清单 | `docs/release/v0_1_release_checklist.md` | 本文档 |
-| Smoke Test | `learning_platform/backend/scripts/smoke_test.py` | 后端 API 快速验证（含 exercise 端点） |
+| Smoke Test | `learning_platform/backend/scripts/smoke_test.py` | 后端 API 快速验证（含 exercise + mistake/weak-point 端点，共 14 项） |
 | Stage 4 MVP | `docs/stage4/exercise_knowledge_linking_mvp.md` | 题目-知识点挂钩 MVP |
+| Stage 4 闭环节 | `docs/stage4/mistake_weakness_loop_mvp.md` | 错题与薄弱点闭环 MVP |
 | Demo 路径 | `docs/demo/demo_paths.md` | 比赛演示路径 |
 | Demo 脚本 | `docs/demo/competition_demo_script_5min.md` | 5 分钟演示脚本 |
 | 样例数据 | `learning_platform/sample_data/` | 仓库内置 Markdown 样例 |

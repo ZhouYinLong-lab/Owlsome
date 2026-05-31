@@ -1263,3 +1263,147 @@ textarea {
   font-size: 0.9rem;
   font-weight: 500;
 }
+
+.attemptHint {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.attemptError {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/* ── Dashboard Review Loop ─────────────────────────────────────── */
+
+.reviewLoopGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.reviewSection {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.reviewSection h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.reviewList {
+  display: grid;
+  gap: 8px;
+}
+
+button.reviewItem {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+  color: inherit;
+}
+
+button.reviewItem:hover {
+  border-color: var(--color-nju-purple);
+  background: var(--color-nju-purple-soft);
+}
+
+.reviewItemHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reviewItemStats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reviewItemStem {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  margin: 2px 0;
+}
+
+.reviewItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reviewArrow {
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.reviewCode {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-nju-purple-soft);
+  color: var(--color-nju-purple);
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+.wrongBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.unsureBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-nju-gold-soft);
+  color: var(--color-nju-gold-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.emptyHint {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.reviewNoPoint {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 980px) {
+  .reviewLoopGrid {
+    grid-template-columns: 1fr;
+  }
+}

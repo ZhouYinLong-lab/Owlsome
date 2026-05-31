@@ -164,6 +164,42 @@ Matching: retrieval adapter first (if available), keyword fallback always presen
 
 Full doc: `docs/stage4/exercise_knowledge_linking_mvp.md`
 
+## Stage 4: Mistake & Weak Point Review Loop MVP
+
+```text
+练习记录
+→ 汇总 wrong / unsure
+→ 生成错题列表和薄弱知识点
+→ 学习者工作台展示
+→ 用户点击回到知识点复习
+→ 再次练习并更新记录
+```
+
+New APIs:
+
+```text
+GET /api/exercises/mistakes      # recent wrong/unsure attempts with exercise & KP details
+GET /api/exercises/weak-points   # aggregated wrong/unsure count per knowledge point
+```
+
+`GET /api/stats` extended with `mistake_attempts`, `unsure_attempts`, `weak_knowledge_points`.
+
+Frontend entry points:
+- **Dashboard** (learner mode): weak knowledge point list + recent mistake list, click to navigate to KP
+- **KnowledgeBase**: improved attempt feedback (success message + error display)
+- **SystemOverview** (admin mode): three new stat cards
+
+Smoke test expanded to 14 checks.
+
+Key files:
+- `app/services/exercises.py` — `list_mistake_exercises()`, `list_weak_knowledge_points()`
+- `app/main.py` — new endpoints, extended stats
+- `frontend/src/pages/Dashboard.tsx` — review loop UI
+- `frontend/src/pages/KnowledgeBase.tsx` — improved feedback
+- `frontend/src/pages/SystemOverview.tsx` — new stat cards
+
+Full doc: `docs/stage4/mistake_weakness_loop_mvp.md`
+
 ## Obsidian Reuse Strategy
 
 Documents should remain usable outside Owlsome:

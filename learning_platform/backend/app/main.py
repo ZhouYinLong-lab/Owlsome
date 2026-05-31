@@ -87,6 +87,15 @@ def stats() -> dict:
             "exercises": conn.execute("SELECT COUNT(*) AS count FROM exercises").fetchone()["count"],
             "linked_exercises": conn.execute("SELECT COUNT(*) AS count FROM exercises WHERE status = 'linked'").fetchone()["count"],
             "exercise_attempts": conn.execute("SELECT COUNT(*) AS count FROM exercise_attempts").fetchone()["count"],
+            "mistake_attempts": conn.execute(
+                "SELECT COUNT(*) AS count FROM exercise_attempts WHERE result = 'wrong'"
+            ).fetchone()["count"],
+            "unsure_attempts": conn.execute(
+                "SELECT COUNT(*) AS count FROM exercise_attempts WHERE result = 'unsure'"
+            ).fetchone()["count"],
+            "weak_knowledge_points": conn.execute(
+                "SELECT COUNT(DISTINCT knowledge_point_id) AS count FROM exercise_attempts WHERE result IN ('wrong', 'unsure') AND knowledge_point_id IS NOT NULL"
+            ).fetchone()["count"],
         }
 
 
@@ -329,6 +338,16 @@ def create_exercise_api(payload: ExerciseCreate) -> dict:
 @app.get("/api/exercises")
 def list_exercises_api() -> list[dict]:
     return exercise_service.list_exercises()
+
+
+@app.get("/api/exercises/mistakes")
+def list_mistake_exercises_api(limit: int = 20) -> list[dict]:
+    return exercise_service.list_mistake_exercises(max(1, min(limit, 100)))
+
+
+@app.get("/api/exercises/weak-points")
+def list_weak_points_api(limit: int = 10) -> list[dict]:
+    return exercise_service.list_weak_knowledge_points(max(1, min(limit, 100)))
 
 
 @app.get("/api/exercises/{exercise_id}")

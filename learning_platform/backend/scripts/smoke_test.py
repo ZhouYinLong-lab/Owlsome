@@ -141,6 +141,33 @@ else:
           "skipped (no exercise created)")
     ok = True  # skip is not a failure
 
+# 12. GET /api/exercises/mistakes
+resp = client.get("/api/exercises/mistakes")
+body = resp.json()
+ok = resp.status_code == 200 and isinstance(body, list)
+check("GET /api/exercises/mistakes",
+      ok,
+      f"status={resp.status_code} count={len(body) if isinstance(body, list) else 'n/a'}")
+
+# 13. GET /api/exercises/weak-points
+resp = client.get("/api/exercises/weak-points")
+body = resp.json()
+ok = resp.status_code == 200 and isinstance(body, list)
+check("GET /api/exercises/weak-points",
+      ok,
+      f"status={resp.status_code} count={len(body) if isinstance(body, list) else 'n/a'}")
+
+# 14. GET /api/stats — verify new fields
+resp = client.get("/api/stats")
+body = resp.json()
+ok = (resp.status_code == 200
+      and isinstance(body.get("mistake_attempts"), int)
+      and isinstance(body.get("unsure_attempts"), int)
+      and isinstance(body.get("weak_knowledge_points"), int))
+check("GET /api/stats (mistake/weak fields)",
+      ok,
+      f"status={resp.status_code} mistake_attempts={body.get('mistake_attempts')!r} unsure_attempts={body.get('unsure_attempts')!r} weak_knowledge_points={body.get('weak_knowledge_points')!r}")
+
 # Summary
 print(f"\n{passed} passed, {failed} failed")
 

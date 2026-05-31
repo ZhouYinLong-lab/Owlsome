@@ -177,12 +177,16 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [showAnswer, setShowAnswer] = useState<Set<number>>(new Set());
   const [attemptResult, setAttemptResult] = useState<Record<number, string>>({});
+  const [attemptError, setAttemptError] = useState<Record<number, string>>({});
+  const [attemptBusy, setAttemptBusy] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     setAnswer("");
     setExercises([]);
     setShowAnswer(new Set());
     setAttemptResult({});
+    setAttemptError({});
+    setAttemptBusy({});
   }, [detail?.id]);
 
   useEffect(() => {
@@ -326,57 +330,86 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
                   </div>
                 )}
                 {result ? (
-                  <p className="attemptFeedback">
-                    {result === "correct" ? <CheckCircle size={16} color="var(--color-success)" /> :
-                     result === "wrong" ? <XCircle size={16} color="var(--color-danger)" /> :
-                     <HelpCircle size={16} color="var(--color-warning)" />}
-                    已记录：
-                    {result === "correct" ? "做对了" : result === "wrong" ? "做错了" : "不确定"}
-                  </p>
+                  <div>
+                    <p className="attemptFeedback">
+                      {result === "correct" ? <CheckCircle size={16} color="var(--color-success)" /> :
+                       result === "wrong" ? <XCircle size={16} color="var(--color-danger)" /> :
+                       <HelpCircle size={16} color="var(--color-warning)" />}
+                      已记录：
+                      {result === "correct" ? "做对了" : result === "wrong" ? "做错了" : "不确定"}
+                    </p>
+                    <p className="attemptHint">已记录，工作台将更新薄弱点统计。</p>
+                  </div>
                 ) : (
-                  <div className="exerciseActions">
-                    <button
-                      className="ghostButton"
-                      onClick={async () => {
-                        try {
-                          await api(`/api/exercises/${ex.id}/attempts`, {
-                            method: "POST",
-                            body: JSON.stringify({ knowledge_point_id: detail.id, result: "correct" })
-                          });
-                          setAttemptResult((prev) => ({ ...prev, [ex.id]: "correct" }));
-                        } catch { /* ignore */ }
-                      }}
-                    >
-                      <CheckCircle size={16} /> 做对
-                    </button>
-                    <button
-                      className="ghostButton"
-                      onClick={async () => {
-                        try {
-                          await api(`/api/exercises/${ex.id}/attempts`, {
-                            method: "POST",
-                            body: JSON.stringify({ knowledge_point_id: detail.id, result: "wrong" })
-                          });
-                          setAttemptResult((prev) => ({ ...prev, [ex.id]: "wrong" }));
-                        } catch { /* ignore */ }
-                      }}
-                    >
-                      <XCircle size={16} /> 做错
-                    </button>
-                    <button
-                      className="ghostButton"
-                      onClick={async () => {
-                        try {
-                          await api(`/api/exercises/${ex.id}/attempts`, {
-                            method: "POST",
-                            body: JSON.stringify({ knowledge_point_id: detail.id, result: "unsure" })
-                          });
-                          setAttemptResult((prev) => ({ ...prev, [ex.id]: "unsure" }));
-                        } catch { /* ignore */ }
-                      }}
-                    >
-                      <HelpCircle size={16} /> 不确定
-                    </button>
+                  <div>
+                    {attemptError[ex.id] && (
+                      <p className="attemptError">{attemptError[ex.id]}</p>
+                    )}
+                    <div className="exerciseActions">
+                      <button
+                        className="ghostButton"
+                        disabled={attemptBusy[ex.id]}
+                        onClick={async () => {
+                          setAttemptError((prev) => ({ ...prev, [ex.id]: "" }));
+                          setAttemptBusy((prev) => ({ ...prev, [ex.id]: true }));
+                          try {
+                            await api(`/api/exercises/${ex.id}/attempts`, {
+                              method: "POST",
+                              body: JSON.stringify({ knowledge_point_id: detail.id, result: "correct" })
+                            });
+                            setAttemptResult((prev) => ({ ...prev, [ex.id]: "correct" }));
+                          } catch (err) {
+                            setAttemptError((prev) => ({ ...prev, [ex.id]: err instanceof Error ? err.message : "提交失败，请检查后端是否运行。" }));
+                          } finally {
+                            setAttemptBusy((prev) => ({ ...prev, [ex.id]: false }));
+                          }
+                        }}
+                      >
+                        <CheckCircle size={16} /> 做对
+                      </button>
+                      <button
+                        className="ghostButton"
+                        disabled={attemptBusy[ex.id]}
+                        onClick={async () => {
+                          setAttemptError((prev) => ({ ...prev, [ex.id]: "" }));
+                          setAttemptBusy((prev) => ({ ...prev, [ex.id]: true }));
+                          try {
+                            await api(`/api/exercises/${ex.id}/attempts`, {
+                              method: "POST",
+                              body: JSON.stringify({ knowledge_point_id: detail.id, result: "wrong" })
+                            });
+                            setAttemptResult((prev) => ({ ...prev, [ex.id]: "wrong" }));
+                          } catch (err) {
+                            setAttemptError((prev) => ({ ...prev, [ex.id]: err instanceof Error ? err.message : "提交失败，请检查后端是否运行。" }));
+                          } finally {
+                            setAttemptBusy((prev) => ({ ...prev, [ex.id]: false }));
+                          }
+                        }}
+                      >
+                        <XCircle size={16} /> 做错
+                      </button>
+                      <button
+                        className="ghostButton"
+                        disabled={attemptBusy[ex.id]}
+                        onClick={async () => {
+                          setAttemptError((prev) => ({ ...prev, [ex.id]: "" }));
+                          setAttemptBusy((prev) => ({ ...prev, [ex.id]: true }));
+                          try {
+                            await api(`/api/exercises/${ex.id}/attempts`, {
+                              method: "POST",
+                              body: JSON.stringify({ knowledge_point_id: detail.id, result: "unsure" })
+                            });
+                            setAttemptResult((prev) => ({ ...prev, [ex.id]: "unsure" }));
+                          } catch (err) {
+                            setAttemptError((prev) => ({ ...prev, [ex.id]: err instanceof Error ? err.message : "提交失败，请检查后端是否运行。" }));
+                          } finally {
+                            setAttemptBusy((prev) => ({ ...prev, [ex.id]: false }));
+                          }
+                        }}
+                      >
+                        <HelpCircle size={16} /> 不确定
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

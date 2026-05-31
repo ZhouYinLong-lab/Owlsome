@@ -169,6 +169,12 @@ export function App() {
     setDetail(await api<KnowledgePointDetail>(`/api/knowledge-points/${id}`));
   }
 
+  async function openKnowledgePoint(id: number) {
+    setTab("knowledge");
+    setSelectedId(id);
+    setDetail(await api<KnowledgePointDetail>(`/api/knowledge-points/${id}`));
+  }
+
   async function approveNote(noteId: number) {
     setBusy(`approve-${noteId}`);
     await api(`/api/notes/${noteId}/approve`, { method: "POST" });
@@ -209,6 +215,8 @@ export function App() {
           spaces={personalSpaces}
           points={points}
           onNavigate={setTab}
+          role={role}
+          onOpenKnowledgePoint={openKnowledgePoint}
         />
       )}
       {tab === "knowledge" && (

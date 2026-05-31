@@ -202,3 +202,58 @@ def create_attempt(exercise_id: int, payload: ExerciseAttemptCreate) -> dict:
         )
         row = conn.execute("SELECT * FROM exercise_attempts WHERE id = ?", (cursor.lastrowid,)).fetchone()
     return row_to_dict(row) or {}
+
+
+def list_mistake_exercises(limit: int = 20) -> list[dict]:
+    """Return recent wrong/unsure exercise attempts with exercise and knowledge point details."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                ea.id AS attempt_id,
+                ea.exercise_id,
+                ea.knowledge_point_id,
+                ea.result,
+                ea.note,
+                ea.created_at AS attempted_at,
+                e.title AS exercise_title,
+                e.stem AS exercise_stem,
+                e.answer AS exercise_answer,
+                e.analysis AS exercise_analysis,
+                kp.code AS knowledge_point_code,
+                kp.title AS knowledge_point_title
+            FROM exercise_attempts ea
+            JOIN exercises e ON e.id = ea.exercise_id
+            LEFT JOIN knowledge_points kp ON kp.id = ea.knowledge_point_id
+            WHERE ea.result IN ('wrong', 'unsure')
+            ORDER BY ea.created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return rows_to_dicts(rows)
+
+
+def list_weak_knowledge_points(limit: int = 10) -> list[dict]:
+    """Aggregate wrong/unsure attempts per knowledge point, ignoring null knowledge_point_id."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                ea.knowledge_point_id,
+                kp.code,
+                kp.title,
+                SUM(CASE WHEN ea.result = 'wrong' THEN 1 ELSE 0 END) AS wrong_count,
+                SUM(CASE WHEN ea.result = 'unsure' THEN 1 ELSE 0 END) AS unsure_count,
+                COUNT(*) AS total_weak_attempts,
+                MAX(ea.created_at) AS latest_attempt_at
+            FROM exercise_attempts ea
+            JOIN knowledge_points kp ON kp.id = ea.knowledge_point_id
+            WHERE ea.result IN ('wrong', 'unsure')
+            GROUP BY ea.knowledge_point_id
+            ORDER BY total_weak_attempts DESC, latest_attempt_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return rows_to_dicts(rows)
