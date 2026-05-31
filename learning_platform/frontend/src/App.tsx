@@ -187,6 +187,15 @@ export function App() {
   }, [role, tab]);
 
   useEffect(() => {
+    if (tab !== "personal" || personalSpace || personalSpaces.length === 0) return;
+    const targetSpaceId = selectedSpaceId && personalSpaces.some((space) => space.id === selectedSpaceId)
+      ? selectedSpaceId
+      : personalSpaces[0].id;
+    loadPersonalSpace(targetSpaceId, selectedPersonalPointId)
+      .catch((err) => setMessage(`个人空间加载失败：${err.message}`));
+  }, [tab, personalSpace, personalSpaces, selectedSpaceId, selectedPersonalPointId]);
+
+  useEffect(() => {
     writeStoredValue(STORAGE_KEYS.role, role);
   }, [role]);
 
@@ -304,6 +313,8 @@ export function App() {
           points={points}
           onNavigate={setTab}
           role={role}
+          busy={busy}
+          onImportSample={importSample}
           onOpenKnowledgePoint={openKnowledgePoint}
           onContinuePersonal={continuePersonalLearning}
         />

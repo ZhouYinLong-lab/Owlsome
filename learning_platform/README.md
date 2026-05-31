@@ -87,13 +87,18 @@ cd D:\Projects\EL\learning_platform\backend
 python scripts\seed_demo.py --all
 ```
 
+如果 Windows 提示数据库被占用，请先停止正在运行的后端 `uvicorn`，再重新执行该命令。
+
 执行后前端应能看到：
 
 - 公共知识库已有 8 个知识点。
-- 个人学习空间已有样例空间。
-- 审核中心有 1 条待审核贡献。
+- 个人学习空间已有样例空间，并带有已掌握、学习中、疑难点进度样例。
+- 审核中心有 1 条待审核笔记和 1 条待审核贡献。
+- 公共知识点详情页已有 1 条已合并笔记。
 - 公共知识点详情页已有 1 条“社区贡献”。
-- 首页统计卡片显示 pending / approved / community 内容。
+- 知识点详情页已有 1 道已绑定练习。
+- 工作台已有错题和薄弱知识点入口。
+- 首页统计卡片显示 pending / approved / community / exercise 内容。
 
 ## 比赛前推荐准备命令
 

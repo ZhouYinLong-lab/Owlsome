@@ -6,6 +6,8 @@ import {
   Dumbbell,
   FolderTree,
   HelpCircle,
+  Loader2,
+  Play,
   ShieldCheck,
   UserRound,
   XCircle
@@ -13,18 +15,31 @@ import {
 import { api } from "../api";
 import type { KnowledgePoint, MistakeExercise, PersonalSpace, Stats, Tab, WeakKnowledgePoint } from "../types";
 
-export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowledgePoint, onContinuePersonal }: {
+export function Dashboard({
+  stats,
+  spaces,
+  points,
+  onNavigate,
+  role,
+  busy,
+  onImportSample,
+  onOpenKnowledgePoint,
+  onContinuePersonal
+}: {
   stats: Stats | null;
   spaces: PersonalSpace[];
   points: KnowledgePoint[];
   onNavigate: (tab: Tab) => void;
   role: string;
+  busy: string;
+  onImportSample: () => void;
   onOpenKnowledgePoint: (id: number) => void;
   onContinuePersonal: () => void;
 }) {
   const recentSpace = spaces[0];
   const progress = recentSpace?.progress;
   const mastered = progress ? `${progress.mastered}/${progress.total}` : "0/0";
+  const hasPublicKnowledge = points.length > 0;
   const cards = [
     ["公共资源", stats?.knowledge_points ?? 0, FolderTree],
     ["个人空间", stats?.personal_spaces ?? 0, UserRound],
@@ -68,11 +83,22 @@ export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowl
 
         <article className="workbenchCard">
           <span><FolderTree size={18} /> 公共资源</span>
-          <h2>数学 / 微积分 II（第四版）</h2>
-          <p>当前公共库包含 {points.length} 个知识点，已按教材章节组织，适合作为团队共建底座。</p>
-          <button className="primary" onClick={() => onNavigate("knowledge")}>
-            浏览公共资源库
-          </button>
+          <h2>{hasPublicKnowledge ? "数学 / 微积分 II（第四版）" : "等待导入公共教材"}</h2>
+          <p>
+            {hasPublicKnowledge
+              ? `当前公共库包含 ${points.length} 个知识点，已按教材章节组织，适合作为团队共建底座。`
+              : "公共库还没有知识点。比赛演示先切到管理员模式，点击一键导入样例即可开始公共知识库主线。"}
+          </p>
+          {role === "admin" && !hasPublicKnowledge ? (
+            <button className="primary" onClick={onImportSample} disabled={busy === "import"}>
+              {busy === "import" ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
+              一键导入样例
+            </button>
+          ) : (
+            <button className="primary" onClick={() => onNavigate("knowledge")}>
+              浏览公共资源库
+            </button>
+          )}
         </article>
 
         <article className="workbenchCard">
@@ -90,7 +116,7 @@ export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowl
           <section className="reviewSection">
             <h2><AlertTriangle size={18} /> 薄弱知识点</h2>
             {weakPoints.length === 0 ? (
-              <p className="emptyHint">暂无错题记录，完成一次关联练习后这里会出现复习入口。</p>
+              <p className="emptyHint">暂无错题记录。管理员绑定练习后，学习者在知识点详情里标记“做错”或“不确定”，这里会出现复习入口。</p>
             ) : (
               <div className="reviewList">
                 {weakPoints.map((wp) => (
@@ -118,7 +144,7 @@ export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowl
           <section className="reviewSection">
             <h2><Dumbbell size={18} /> 最近错题</h2>
             {mistakes.length === 0 ? (
-              <p className="emptyHint">暂无错题记录，完成一次关联练习后这里会出现复习入口。</p>
+              <p className="emptyHint">暂无错题记录。完成一次关联练习并记录结果后，这里会展示最近需要回看的题目。</p>
             ) : (
               <div className="reviewList">
                 {mistakes.map((m) => (
