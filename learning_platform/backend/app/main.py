@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin_auth import require_admin_token
 from app.db import get_connection, init_db, row_to_dict, rows_to_dicts
 from app.models import (
     CalculusFullImportRequest,
@@ -99,7 +100,7 @@ def stats() -> dict:
         }
 
 
-@app.post("/api/import/sample", response_model=ImportResult)
+@app.post("/api/import/sample", response_model=ImportResult, dependencies=[Depends(require_admin_token)])
 def import_sample_api() -> ImportResult:
     try:
         return import_sample()
@@ -107,7 +108,7 @@ def import_sample_api() -> ImportResult:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/api/import/calculus-full", response_model=CalculusFullImportResult)
+@app.post("/api/import/calculus-full", response_model=CalculusFullImportResult, dependencies=[Depends(require_admin_token)])
 def import_calculus_full_api(payload: CalculusFullImportRequest | None = None) -> dict:
     options = payload or CalculusFullImportRequest()
     try:
@@ -193,7 +194,7 @@ def pending_notes_api() -> list[dict]:
     return pending_notes()
 
 
-@app.post("/api/notes/{note_id}/approve")
+@app.post("/api/notes/{note_id}/approve", dependencies=[Depends(require_admin_token)])
 def approve_note_api(note_id: int) -> dict:
     note = approve_note(note_id)
     if not note:
@@ -201,7 +202,7 @@ def approve_note_api(note_id: int) -> dict:
     return note
 
 
-@app.post("/api/notes/{note_id}/reject")
+@app.post("/api/notes/{note_id}/reject", dependencies=[Depends(require_admin_token)])
 def reject_note_api(note_id: int) -> dict:
     note = reject_note(note_id)
     if not note:
@@ -295,7 +296,7 @@ def contribution_detail_api(contribution_id: int) -> dict:
     return contribution
 
 
-@app.post("/api/contributions/{contribution_id}/approve")
+@app.post("/api/contributions/{contribution_id}/approve", dependencies=[Depends(require_admin_token)])
 def approve_contribution_api(contribution_id: int, payload: ContributionReviewRequest) -> dict:
     try:
         contribution = contributions.approve(contribution_id, payload)
@@ -306,7 +307,7 @@ def approve_contribution_api(contribution_id: int, payload: ContributionReviewRe
     return contribution
 
 
-@app.post("/api/contributions/{contribution_id}/reject")
+@app.post("/api/contributions/{contribution_id}/reject", dependencies=[Depends(require_admin_token)])
 def reject_contribution_api(contribution_id: int, payload: ContributionReviewRequest) -> dict:
     try:
         contribution = contributions.reject(contribution_id, payload)
@@ -317,7 +318,7 @@ def reject_contribution_api(contribution_id: int, payload: ContributionReviewReq
     return contribution
 
 
-@app.post("/api/contributions/{contribution_id}/request-revision")
+@app.post("/api/contributions/{contribution_id}/request-revision", dependencies=[Depends(require_admin_token)])
 def request_revision_contribution_api(contribution_id: int, payload: ContributionReviewRequest) -> dict:
     try:
         contribution = contributions.request_revision(contribution_id, payload)
@@ -330,7 +331,7 @@ def request_revision_contribution_api(contribution_id: int, payload: Contributio
 
 # ── Exercise endpoints ──────────────────────────────────────────
 
-@app.post("/api/exercises")
+@app.post("/api/exercises", dependencies=[Depends(require_admin_token)])
 def create_exercise_api(payload: ExerciseCreate) -> dict:
     return exercise_service.create_exercise(payload)
 
@@ -367,7 +368,7 @@ def recommend_exercise_api(payload: ExerciseRecommendRequest) -> dict:
     return result.model_dump()
 
 
-@app.post("/api/exercises/{exercise_id}/link")
+@app.post("/api/exercises/{exercise_id}/link", dependencies=[Depends(require_admin_token)])
 def link_exercise_api(exercise_id: int, payload: ExerciseLinkRequest) -> dict:
     try:
         return exercise_service.link_exercise(exercise_id, payload)

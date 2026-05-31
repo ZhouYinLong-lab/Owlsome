@@ -51,7 +51,16 @@ python scripts\smoke_test.py
 
 期望：每个检查项输出 `ok`，exit code 0。
 
-### 2.3 准备演示数据（Seed）
+### 2.3 管理员 Token 保护测试
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\admin_guard_test.py
+```
+
+期望：21/21 通过，验证 ADMIN_TOKEN 空/非空两种模式。
+
+### 2.4 准备演示数据（Seed）
 
 ```powershell
 cd D:\Projects\EL\learning_platform\backend
@@ -60,7 +69,7 @@ python scripts\seed_demo.py --all
 
 期望：输出包含 "Seed complete" 或等价确认。数据库被备份并重建。
 
-### 2.4 微积分 II 全书 Dry-Run
+### 2.5 微积分 II 全书 Dry-Run
 
 ```powershell
 cd D:\Projects\EL\learning_platform\backend
@@ -69,7 +78,7 @@ python scripts\import_calculus_full.py --dry-run --report D:\Projects\EL\docs\te
 
 期望：输出章节、知识点和内容单元统计，生成 Markdown 报告，不写入 SQLite。
 
-### 2.5 内容 QA 审计
+### 2.6 内容 QA 审计
 
 ```powershell
 cd D:\Projects\EL\learning_platform\backend
@@ -78,7 +87,7 @@ python scripts\content_quality_audit.py --report D:\Projects\EL\docs\test_record
 
 期望：生成 QA 报告，标记过长、过短、公式符号疑似不平衡或 marker 识别不足的知识点。
 
-### 2.6 前端构建
+### 2.7 前端构建
 
 ```powershell
 cd D:\Projects\EL\learning_platform\frontend
@@ -94,7 +103,7 @@ cd D:\Projects\EL\learning_platform\frontend
 npm run build -- --outDir dist_check
 ```
 
-### 2.7 Git 状态检查
+### 2.8 Git 状态检查
 
 ```powershell
 cd D:\Projects\EL
@@ -208,8 +217,12 @@ git clean -fd
 | 实现概览 | `docs/implementation_overview.md` | 模块边界与 API 清单 |
 | v0.1 发布检查清单 | `docs/release/v0_1_release_checklist.md` | 本文档 |
 | Smoke Test | `learning_platform/backend/scripts/smoke_test.py` | 后端 API 快速验证（含 exercise + mistake/weak-point 端点，共 14 项） |
+| Admin Guard Test | `learning_platform/backend/scripts/admin_guard_test.py` | 管理员 token 保护验证（21 项） |
 | Stage 4 MVP | `docs/stage4/exercise_knowledge_linking_mvp.md` | 题目-知识点挂钩 MVP |
 | Stage 4 闭环节 | `docs/stage4/mistake_weakness_loop_mvp.md` | 错题与薄弱点闭环 MVP |
+| 部署指南 | `docs/deployment/campus_server_deployment_guide.md` | 校园网服务器试部署说明 |
+| 后端服务器配置 | `learning_platform/backend/.env.server.example` | 服务器环境变量模板 |
+| 前端服务器配置 | `learning_platform/frontend/.env.server.example` | 前端服务器构建配置模板 |
 | Demo 路径 | `docs/demo/demo_paths.md` | 比赛演示路径 |
 | Demo 脚本 | `docs/demo/competition_demo_script_5min.md` | 5 分钟演示脚本 |
 | 样例数据 | `learning_platform/sample_data/` | 仓库内置 Markdown 样例 |

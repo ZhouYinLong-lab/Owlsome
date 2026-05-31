@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, Dumbbell, Link2, Loader2, Plus, Search, Target } from "lucide-react";
-import { api } from "../api";
+import { adminApi, api } from "../api";
 import type { Exercise, ExerciseRecommendation } from "../types";
 
 export function ExerciseManager() {
@@ -37,7 +37,7 @@ export function ExerciseManager() {
     }
     setBusy("create");
     try {
-      const result = await api<Exercise>("/api/exercises", {
+      const result = await adminApi<Exercise>("/api/exercises", {
         method: "POST",
         body: JSON.stringify({ title: title.trim(), stem: stem.trim(), answer, analysis, difficulty })
       });
@@ -82,7 +82,7 @@ export function ExerciseManager() {
   async function link(exerciseId: number, knowledgePointId: number) {
     setBusy(`link-${exerciseId}-${knowledgePointId}`);
     try {
-      await api(`/api/exercises/${exerciseId}/link`, {
+      await adminApi(`/api/exercises/${exerciseId}/link`, {
         method: "POST",
         body: JSON.stringify({ knowledge_point_id: knowledgePointId, confidence: 1.0, reason: "管理员确认绑定" })
       });

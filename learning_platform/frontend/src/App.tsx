@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE, api } from "./api";
+import { API_BASE, adminApi, api } from "./api";
 import { AppShell } from "./components/AppShell";
 import { Dashboard } from "./pages/Dashboard";
 import { KnowledgeBase } from "./pages/KnowledgeBase";
@@ -209,7 +209,7 @@ export function App() {
   async function importSample() {
     setBusy("import");
     try {
-      const result = await api<{ message: string }>("/api/import/sample", { method: "POST" });
+      const result = await adminApi<{ message: string }>("/api/import/sample", { method: "POST" });
       setMessage(result.message);
       await refreshAll();
       setTab("knowledge");
@@ -223,7 +223,7 @@ export function App() {
   async function importCalculusFull(dryRun: boolean) {
     setBusy(dryRun ? "calculus-full-dry-run" : "calculus-full-import");
     try {
-      const result = await api<CalculusFullImportResult>("/api/import/calculus-full", {
+      const result = await adminApi<CalculusFullImportResult>("/api/import/calculus-full", {
         method: "POST",
         body: JSON.stringify({
           dry_run: dryRun,
@@ -265,21 +265,21 @@ export function App() {
 
   async function approveNote(noteId: number) {
     setBusy(`approve-${noteId}`);
-    await api(`/api/notes/${noteId}/approve`, { method: "POST" });
+    await adminApi(`/api/notes/${noteId}/approve`, { method: "POST" });
     await refreshAll(selectedId);
     setBusy("");
   }
 
   async function rejectNote(noteId: number) {
     setBusy(`reject-${noteId}`);
-    await api(`/api/notes/${noteId}/reject`, { method: "POST" });
+    await adminApi(`/api/notes/${noteId}/reject`, { method: "POST" });
     await refreshAll(selectedId);
     setBusy("");
   }
 
   async function reviewContribution(contributionId: number, action: "approve" | "reject" | "request-revision") {
     setBusy(`${action}-contribution-${contributionId}`);
-    await api(`/api/contributions/${contributionId}/${action}`, {
+    await adminApi(`/api/contributions/${contributionId}/${action}`, {
       method: "POST",
       body: JSON.stringify({ comment: action === "approve" ? "审核通过，合并到公共知识库。" : "" })
     });

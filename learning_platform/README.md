@@ -229,6 +229,37 @@ GET /api/exercises/weak-points   # 薄弱知识点统计
 
 详细说明见：`D:\Projects\EL\docs\stage4\mistake_weakness_loop_mvp.md`
 
+## 管理员 Token 保护
+
+服务器部署时可设置 `ADMIN_TOKEN` 环境变量，保护管理员写操作：
+
+- 本地 demo（`ADMIN_TOKEN` 为空）：所有功能不受影响，smoke test 全部通过。
+- 服务器部署（`ADMIN_TOKEN` 非空）：管理员写操作需要 `X-Admin-Token` 请求头，token 不匹配返回 403。
+- 学习者接口（浏览、问答、练习反馈、贡献提交）不受影响。
+
+配置方式：
+
+1. 复制 `.env.server.example` 为 `.env`，设置 `ADMIN_TOKEN=your-secret`。
+2. 前端首次切换到管理员模式时，会提示输入 token，保存在浏览器 localStorage。
+3. 后续管理员请求自动携带 token。
+
+验证命令：
+
+```powershell
+cd D:\Projects\EL\learning_platform\backend
+python scripts\admin_guard_test.py
+```
+
+## 服务器部署
+
+校园网内网部署说明见：
+
+```text
+D:\Projects\EL\docs\deployment\campus_server_deployment_guide.md
+```
+
+推荐协作模式：本地开发 → push GitHub → 服务器 git pull 验收。
+
 ## Smoke Test
 
 快速验证后端核心 API 是否可用（不依赖 LLM Key，不要求 uvicorn 已启动）：

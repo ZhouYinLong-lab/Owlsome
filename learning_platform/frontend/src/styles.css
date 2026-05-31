@@ -168,6 +168,52 @@ nav button:hover {
   font-size: 12px;
 }
 
+.tokenInputGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.tokenInput {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-surface);
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+.tokenInput::placeholder {
+  color: var(--color-muted-on-dark);
+}
+
+.tokenInputActions {
+  display: flex;
+  gap: 6px;
+}
+
+.ghostButtonSmall {
+  flex: 1;
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-surface);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ghostButtonSmall:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 main {
   min-width: 0;
   padding: 26px;

@@ -1,5 +1,6 @@
 import { BarChart3, BookOpen, Dumbbell, FlaskConical, FolderTree, Home, Loader2, Play, ShieldCheck, UserRound } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { readAdminToken, writeAdminToken } from "../api";
 import type { Role, Tab } from "../types";
 import { pageMeta } from "../utils/labels";
 
@@ -16,6 +17,27 @@ type AppShellProps = {
 
 export function AppShell({ role, tab, busy, message, onRoleChange, onTabChange, onImportSample, children }: AppShellProps) {
   const meta = pageMeta(tab, role);
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenInput, setTokenInput] = useState(readAdminToken() ?? "");
+
+  function handleRoleToggle() {
+    if (role === "learner") {
+      // Switching to admin — show token input if not already stored
+      const stored = readAdminToken();
+      if (stored === null) {
+        setTokenInput("");
+        setShowTokenInput(true);
+        return;
+      }
+    }
+    onRoleChange(role === "admin" ? "learner" : "admin");
+  }
+
+  function confirmToken() {
+    writeAdminToken(tokenInput.trim());
+    setShowTokenInput(false);
+    onRoleChange("admin");
+  }
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -56,10 +78,31 @@ export function AppShell({ role, tab, busy, message, onRoleChange, onTabChange, 
         </nav>
         <div className="roleSwitch" aria-label="本地演示角色切换">
           <span>{role === "admin" ? "管理员模式" : "学习者模式"}</span>
-          <button onClick={() => onRoleChange(role === "admin" ? "learner" : "admin")}>
-            {role === "admin" ? <UserRound size={16} /> : <ShieldCheck size={16} />}
-            切换为{role === "admin" ? "学习者" : "管理员"}
-          </button>
+          {showTokenInput ? (
+            <div className="tokenInputGroup">
+              <input
+                className="tokenInput"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="输入管理员 token（留空则无保护）"
+                aria-label="管理员 token"
+                onKeyDown={(e) => { if (e.key === "Enter") confirmToken(); }}
+              />
+              <div className="tokenInputActions">
+                <button className="ghostButtonSmall" onClick={confirmToken}>
+                  确认并切换
+                </button>
+                <button className="ghostButtonSmall" onClick={() => { setShowTokenInput(false); onRoleChange("admin"); }}>
+                  跳过
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={handleRoleToggle}>
+              {role === "admin" ? <UserRound size={16} /> : <ShieldCheck size={16} />}
+              切换为{role === "admin" ? "学习者" : "管理员"}
+            </button>
+          )}
           <small>本地演示隔离；正式权限后续接入南哪小帮手。</small>
         </div>
       </aside>

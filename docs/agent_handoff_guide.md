@@ -103,10 +103,12 @@ Important files:
 | `app/services/contributions.py` | private-to-public contribution workflow |
 | `app/services/qa.py` | offline Q&A and optional LLM Q&A |
 | `app/services/retrieval.py` | optional BGE embedding/reranker adapter |
+| `app/admin_auth.py` | optional ADMIN_TOKEN guard for admin write endpoints |
 | `scripts/seed_demo.py` | one-command demo data preparation |
 | `scripts/import_calculus_full.py` | full cleaned Calculus II structural import probe/import |
 | `scripts/content_quality_audit.py` | full Calculus II content QA and second-pass split audit report |
 | `scripts/retrieval_probe.py` | CLI validation for optional retrieval matching |
+| `scripts/admin_guard_test.py` | verify ADMIN_TOKEN guard on admin endpoints |
 
 ### Database Concept Map
 
@@ -141,6 +143,14 @@ erDiagram
 | Personal Q&A | `POST /api/personal-spaces/{space_id}/qa` |
 | Contributions | `POST /api/contributions/from-personal-point`, `GET /api/contributions/pending`, `GET /api/contributions/{id}`, `POST /api/contributions/{id}/approve`, `POST /api/contributions/{id}/reject`, `POST /api/contributions/{id}/request-revision` |
 | Exercises | `POST /api/exercises`, `GET /api/exercises`, `GET /api/exercises/{id}`, `POST /api/exercises/recommend`, `POST /api/exercises/{id}/link`, `GET /api/knowledge-points/{id}/exercises`, `POST /api/exercises/{id}/attempts`, `GET /api/exercises/mistakes`, `GET /api/exercises/weak-points` |
+
+### Admin Token Guard
+
+When `ADMIN_TOKEN` env var is set, admin write endpoints require `X-Admin-Token` header. When empty (local demo), all endpoints are open.
+
+Protected endpoints (9): `POST /api/import/sample`, `POST /api/import/calculus-full`, `POST /api/notes/{id}/approve`, `POST /api/notes/{id}/reject`, `POST /api/contributions/{id}/approve`, `POST /api/contributions/{id}/reject`, `POST /api/contributions/{id}/request-revision`, `POST /api/exercises`, `POST /api/exercises/{id}/link`.
+
+Learner endpoints are never affected.
 
 ## 5. Learning Platform Frontend
 
