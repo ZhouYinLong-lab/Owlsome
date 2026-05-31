@@ -154,6 +154,8 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/import/calculus-full -C
 - 上传 `.md` / `.markdown` / `.txt` 文件，系统会自动切分为个人知识点。
 - 点击“用样例创建个人空间”，复用已有 MinerU Markdown 快速生成个人学习空间。
 
+个人空间左侧支持搜索资料标题、来源文件、知识点编号、标题、摘要和标签。浏览器会用 `localStorage` 记住最近访问的个人空间和知识点，刷新页面后会尽量恢复到上次位置。
+
 第一版 PDF 上传作为占位入口展示，后续接入链路为 `mineru_tools → text_archiver → learning_platform`。
 
 ## Obsidian 兼容
@@ -254,3 +256,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ### 无 LLM Key 能否使用
 
 可以。不配置任何 LLM API Key 也能完整跑通 demo，包括公共知识库浏览、个人学习空间、贡献审核闭环。问答使用基于现有知识点内容的确定性回退逻辑。配置 DeepSeek 或其他 OpenAI-compatible API 后可增强问答效果。
+
+### 刷新后为什么还能回到上次页面
+
+前端会把当前角色、页面 tab、公共知识点和个人空间位置保存在浏览器 `localStorage` 中。这只是演示连续性，不是登录态或权限系统；清除浏览器缓存或换浏览器后会恢复默认学习者工作台。

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Play,
   RefreshCw,
+  Search,
   Send,
   Upload
 } from "lucide-react";
@@ -31,15 +32,74 @@ export function PersonalSpaces(props: {
   onContributionCreated: () => void;
 }) {
   const [openSpaces, setOpenSpaces] = useState<Set<number>>(new Set());
+  const [query, setQuery] = useState("");
+  const [spaceCache, setSpaceCache] = useState<Record<number, PersonalSpaceDetail>>({});
+
+  useEffect(() => {
+    if (props.space) {
+      setSpaceCache((current) => ({ ...current, [props.space.id]: props.space as PersonalSpaceDetail }));
+    }
+  }, [props.space]);
+
+  useEffect(() => {
+    const search = query.trim();
+    if (!search || props.spaces.length === 0) return;
+    let cancelled = false;
+    async function loadMissingSpaces() {
+      const missing = props.spaces.filter((space) => !spaceCache[space.id]);
+      if (missing.length === 0) return;
+      const details = await Promise.all(
+        missing.map((space) =>
+          api<PersonalSpaceDetail>(`/api/personal-spaces/${space.id}`).catch(() => null)
+        )
+      );
+      if (cancelled) return;
+      setSpaceCache((current) => {
+        const next = { ...current };
+        for (const detail of details) {
+          if (detail) next[detail.id] = detail;
+        }
+        return next;
+      });
+    }
+    loadMissingSpaces();
+    return () => {
+      cancelled = true;
+    };
+  }, [props.spaces, query, spaceCache]);
+
+  const filteredSpaces = useMemo(() => props.spaces
+      .map((space) => {
+        const detail = spaceCache[space.id] ?? (props.selectedSpaceId === space.id ? props.space : null);
+        const search = query.trim().toLowerCase();
+        const spaceText = [space.title, space.source_file, space.source_type].join(" ").toLowerCase();
+        const spaceMatches = search ? spaceText.includes(search) : true;
+        const points = detail?.points ?? [];
+        const matchingPoints = search
+          ? points.filter((point) => {
+            const pointText = [point.code, point.title, point.summary, point.tags].join(" ").toLowerCase();
+            return pointText.includes(search);
+          })
+          : points;
+        if (!search || spaceMatches) return { space, detail, points };
+        if (matchingPoints.length > 0) return { space, detail, points: matchingPoints };
+        return null;
+      })
+      .filter((item): item is { space: PersonalSpace; detail: PersonalSpaceDetail | null; points: PersonalPoint[] } => Boolean(item)),
+    [props.spaces, props.selectedSpaceId, props.space, query, spaceCache]
+  );
 
   useEffect(() => {
     setOpenSpaces((current) => {
       const next = new Set(current);
       if (props.selectedSpaceId) next.add(props.selectedSpaceId);
       if (!props.selectedSpaceId && props.spaces[0]) next.add(props.spaces[0].id);
+      if (query.trim()) {
+        for (const item of filteredSpaces) next.add(item.space.id);
+      }
       return next;
     });
-  }, [props.selectedSpaceId, props.spaces]);
+  }, [props.selectedSpaceId, props.spaces, filteredSpaces, query]);
 
   function toggleSpace(spaceId: number) {
     setOpenSpaces((current) => {
@@ -68,8 +128,18 @@ export function PersonalSpaces(props: {
               <RefreshCw size={17} />
             </button>
           </div>
+          <label className="resourceSearch">
+            <Search size={16} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜索资料、知识点、标签"
+              aria-label="搜索个人学习空间"
+            />
+          </label>
           <div className="personalTree">
-            {props.spaces.map((space) => (
+            {query.trim() && <small className="treeMeta">找到 {filteredSpaces.length} 个资料空间</small>}
+            {filteredSpaces.map(({ space, points }) => (
               <div className="treeGroup personalSpaceGroup" key={space.id}>
                 <button
                   className={props.selectedSpaceId === space.id ? "treeNode space selected" : "treeNode space"}
@@ -87,7 +157,7 @@ export function PersonalSpaces(props: {
                   {space.knowledge_point_count} 个知识点 · 已掌握 {space.progress.mastered}/{space.progress.total}
                 </small>
                 <div className={openSpaces.has(space.id) ? "treeChildren open" : "treeChildren"}>
-                  {props.selectedSpaceId === space.id && props.space?.points.map((point) => (
+                  {points.map((point) => (
                     <button
                       key={point.id}
                       className={props.selectedPointId === point.id ? "treePoint selected" : "treePoint"}
@@ -98,15 +168,23 @@ export function PersonalSpaces(props: {
                       <small>{progressLabel(point.progress_status)} · {point.content_count ?? 0} 个内容单元</small>
                     </button>
                   ))}
-                  {props.selectedSpaceId !== space.id && (
+                  {!query.trim() && props.selectedSpaceId !== space.id && (
                     <button className="treePoint placeholder" onClick={() => props.onSelectSpace(space.id)}>
                       展开后加载资料目录
+                    </button>
+                  )}
+                  {query.trim() && points.length === 0 && (
+                    <button className="treePoint placeholder" onClick={() => props.onSelectSpace(space.id)}>
+                      匹配资料空间，点击加载目录
                     </button>
                   )}
                 </div>
               </div>
             ))}
             {props.spaces.length === 0 && <div className="emptyState">还没有个人空间，先上传 Markdown 或使用样例。</div>}
+            {props.spaces.length > 0 && filteredSpaces.length === 0 && (
+              <div className="emptyState">没有匹配的个人资料或知识点。</div>
+            )}
           </div>
         </div>
       </div>

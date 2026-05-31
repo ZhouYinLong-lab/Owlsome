@@ -22,17 +22,63 @@ import type {
   Tab
 } from "./types";
 
+const STORAGE_KEYS = {
+  role: "owlsome.role",
+  tab: "owlsome.tab",
+  publicKnowledgePointId: "owlsome.publicKnowledgePointId",
+  personalSpaceId: "owlsome.personalSpaceId",
+  personalPointId: "owlsome.personalPointId"
+} as const;
+
+const ADMIN_ONLY_TABS = new Set<Tab>(["review", "system", "exercises"]);
+const VALID_TABS = new Set<Tab>(["dashboard", "knowledge", "personal", "pipeline", "review", "system", "exercises"]);
+const VALID_ROLES = new Set<Role>(["learner", "admin"]);
+
+function readStoredValue(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredValue(key: string, value: string | number) {
+  try {
+    window.localStorage.setItem(key, String(value));
+  } catch {
+    // Local storage is a demo convenience, not a required runtime dependency.
+  }
+}
+
+function readStoredNumber(key: string): number | null {
+  const value = readStoredValue(key);
+  if (!value) return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+function initialRole(): Role {
+  const stored = readStoredValue(STORAGE_KEYS.role);
+  return stored && VALID_ROLES.has(stored as Role) ? stored as Role : "learner";
+}
+
+function initialTab(role: Role): Tab {
+  const stored = readStoredValue(STORAGE_KEYS.tab);
+  const tab = stored && VALID_TABS.has(stored as Tab) ? stored as Tab : "dashboard";
+  return role === "learner" && ADMIN_ONLY_TABS.has(tab) ? "dashboard" : tab;
+}
+
 export function App() {
-  const [tab, setTab] = useState<Tab>("dashboard");
-  const [role, setRole] = useState<Role>("learner");
+  const [role, setRole] = useState<Role>(() => initialRole());
+  const [tab, setTab] = useState<Tab>(() => initialTab(initialRole()));
   const [stats, setStats] = useState<Stats | null>(null);
   const [points, setPoints] = useState<KnowledgePoint[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(() => readStoredNumber(STORAGE_KEYS.publicKnowledgePointId));
   const [detail, setDetail] = useState<KnowledgePointDetail | null>(null);
   const [personalSpaces, setPersonalSpaces] = useState<PersonalSpace[]>([]);
-  const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(() => readStoredNumber(STORAGE_KEYS.personalSpaceId));
   const [personalSpace, setPersonalSpace] = useState<PersonalSpaceDetail | null>(null);
-  const [selectedPersonalPointId, setSelectedPersonalPointId] = useState<number | null>(null);
+  const [selectedPersonalPointId, setSelectedPersonalPointId] = useState<number | null>(() => readStoredNumber(STORAGE_KEYS.personalPointId));
   const [personalPoint, setPersonalPoint] = useState<PersonalPoint | null>(null);
   const [pending, setPending] = useState<Note[]>([]);
   const [pendingContributions, setPendingContributions] = useState<Contribution[]>([]);
@@ -53,12 +99,23 @@ export function App() {
     setPending(nextPending);
     setPendingContributions(nextContributions);
     setPersonalSpaces(nextSpaces);
-    const targetId = nextSelectedId ?? selectedId ?? nextPoints[0]?.id ?? null;
+    const requestedId = nextSelectedId ?? selectedId;
+    const targetId = requestedId && nextPoints.some((point) => point.id === requestedId)
+      ? requestedId
+      : nextPoints[0]?.id ?? null;
     setSelectedId(targetId);
     if (targetId) {
       setDetail(await api<KnowledgePointDetail>(`/api/knowledge-points/${targetId}`));
     } else {
       setDetail(null);
+    }
+
+    const requestedSpaceId = selectedSpaceId ?? readStoredNumber(STORAGE_KEYS.personalSpaceId);
+    const targetSpaceId = requestedSpaceId && nextSpaces.some((space) => space.id === requestedSpaceId)
+      ? requestedSpaceId
+      : nextSpaces[0]?.id ?? null;
+    if (targetSpaceId && (tab === "personal" || selectedSpaceId)) {
+      await loadPersonalSpace(targetSpaceId, selectedPersonalPointId ?? readStoredNumber(STORAGE_KEYS.personalPointId));
     }
   }
 
@@ -66,7 +123,10 @@ export function App() {
     const space = await api<PersonalSpaceDetail>(`/api/personal-spaces/${spaceId}`);
     setSelectedSpaceId(spaceId);
     setPersonalSpace(space);
-    const targetPointId = pointId ?? selectedPersonalPointId ?? space.points[0]?.id ?? null;
+    const requestedPointId = pointId ?? selectedPersonalPointId;
+    const targetPointId = requestedPointId && space.points.some((point) => point.id === requestedPointId)
+      ? requestedPointId
+      : space.points[0]?.id ?? null;
     setSelectedPersonalPointId(targetPointId);
     setPersonalPoint(
       targetPointId
@@ -126,6 +186,26 @@ export function App() {
     }
   }, [role, tab]);
 
+  useEffect(() => {
+    writeStoredValue(STORAGE_KEYS.role, role);
+  }, [role]);
+
+  useEffect(() => {
+    writeStoredValue(STORAGE_KEYS.tab, tab);
+  }, [tab]);
+
+  useEffect(() => {
+    if (selectedId) writeStoredValue(STORAGE_KEYS.publicKnowledgePointId, selectedId);
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (selectedSpaceId) writeStoredValue(STORAGE_KEYS.personalSpaceId, selectedSpaceId);
+  }, [selectedSpaceId]);
+
+  useEffect(() => {
+    if (selectedPersonalPointId) writeStoredValue(STORAGE_KEYS.personalPointId, selectedPersonalPointId);
+  }, [selectedPersonalPointId]);
+
   async function importSample() {
     setBusy("import");
     try {
@@ -175,6 +255,14 @@ export function App() {
     setDetail(await api<KnowledgePointDetail>(`/api/knowledge-points/${id}`));
   }
 
+  async function continuePersonalLearning() {
+    const targetSpaceId = selectedSpaceId ?? personalSpaces[0]?.id ?? null;
+    if (targetSpaceId) {
+      await loadPersonalSpace(targetSpaceId, selectedPersonalPointId);
+    }
+    setTab("personal");
+  }
+
   async function approveNote(noteId: number) {
     setBusy(`approve-${noteId}`);
     await api(`/api/notes/${noteId}/approve`, { method: "POST" });
@@ -217,6 +305,7 @@ export function App() {
           onNavigate={setTab}
           role={role}
           onOpenKnowledgePoint={openKnowledgePoint}
+          onContinuePersonal={continuePersonalLearning}
         />
       )}
       {tab === "knowledge" && (

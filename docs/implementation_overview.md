@@ -200,6 +200,17 @@ Key files:
 
 Full doc: `docs/stage4/mistake_weakness_loop_mvp.md`
 
+## Demo Continuity
+
+The frontend stores lightweight navigation state in browser `localStorage`:
+
+- role, tab, public knowledge point id
+- personal space id and personal point id
+
+This is only for demo continuity. It is not login state and must not be treated as authorization. If a stored entity no longer exists, the app silently falls back to the default first item. Personal learning spaces also support client-side search across loaded space metadata and knowledge point text.
+
+Validation record: `docs/test_records/frontend_state_persistence_tests.md`
+
 ## Obsidian Reuse Strategy
 
 Documents should remain usable outside Owlsome:

@@ -13,13 +13,14 @@ import {
 import { api } from "../api";
 import type { KnowledgePoint, MistakeExercise, PersonalSpace, Stats, Tab, WeakKnowledgePoint } from "../types";
 
-export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowledgePoint }: {
+export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowledgePoint, onContinuePersonal }: {
   stats: Stats | null;
   spaces: PersonalSpace[];
   points: KnowledgePoint[];
   onNavigate: (tab: Tab) => void;
   role: string;
   onOpenKnowledgePoint: (id: number) => void;
+  onContinuePersonal: () => void;
 }) {
   const recentSpace = spaces[0];
   const progress = recentSpace?.progress;
@@ -60,7 +61,7 @@ export function Dashboard({ stats, spaces, points, onNavigate, role, onOpenKnowl
               ? `已掌握 ${mastered} 个知识点，疑难 ${recentSpace.progress.difficult} 个。`
               : "上传 Markdown 或使用样例资料后，这里会显示最近学习进度。"}
           </p>
-          <button className="primary" onClick={() => onNavigate("personal")}>
+          <button className="primary" onClick={onContinuePersonal}>
             进入个人学习空间
           </button>
         </article>

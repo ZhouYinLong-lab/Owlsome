@@ -194,6 +194,7 @@ Important current behavior:
 - `review` and `system` tabs are hidden unless the local role switch is set to `admin`.
 - This is demo-level UI isolation, not backend authorization.
 - Public and personal sidebars use Obsidian-like expandable navigation trees.
+- The frontend stores role, tab, selected public point, selected personal space, and selected personal point in `localStorage` for demo continuity.
 - Markdown uses Obsidian conventions such as frontmatter, callouts, wikilinks, highlights, and LaTeX.
 
 ## 6. Document Processing Pipeline
@@ -445,7 +446,8 @@ Manual browser checks:
 - learner mode hides admin review/system tabs
 - admin mode shows review center and system overview
 - public resource tree expands/collapses, search filters by chapter/point/summary/tags, and detail pages show breadcrumb context
-- personal space tree expands/collapses
+- personal space tree expands/collapses, search filters by space/point metadata, and refresh restores the last selected personal point when possible
+- clearing browser localStorage returns to the default learner dashboard without errors
 - Markdown formulas and callouts render
 - contribution approval creates community-labeled content
 
@@ -461,12 +463,11 @@ Manual browser checks:
 
 ## 12. Known Near-Term Work
 
-1. Persist frontend tab/tree state in URL or localStorage for better collaboration and demos.
-2. Add search and filtering to personal resource trees.
-3. Review `calculus_content_quality_audit.md` and manually tune any remaining marker-poor or formula-risk knowledge points.
-4. Add real backend role checks after 南哪小帮手 login integration.
-5. Connect optional BGE retrieval to question-to-knowledge-point matching once the service is deployed.
-6. Add a formal migration path before moving from SQLite to PostgreSQL.
+1. Review `calculus_content_quality_audit.md` and manually tune any remaining marker-poor or formula-risk knowledge points.
+2. Add URL routing only if teammate collaboration needs shareable deep links beyond localStorage.
+3. Add real backend role checks after 南哪小帮手 login integration.
+4. Connect optional BGE retrieval to question-to-knowledge-point matching once the service is deployed.
+5. Add a formal migration path before moving from SQLite to PostgreSQL.
 
 ## 13. v0.1 Project Boundaries
 
