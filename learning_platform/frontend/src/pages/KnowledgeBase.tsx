@@ -172,6 +172,8 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   const [noteTitle, setNoteTitle] = useState("课堂补充");
   const [noteContent, setNoteContent] = useState("二重极限要检查不同路径趋近时的结果是否一致，不能只看一条直线。");
   const [busy, setBusy] = useState("");
+  const [noteError, setNoteError] = useState("");
+  const [qaError, setQaError] = useState("");
 
   // Linked exercises
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -202,28 +204,40 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   }
 
   async function submitNote() {
+    setNoteError("");
     setBusy("note");
-    await api("/api/notes", {
-      method: "POST",
-      body: JSON.stringify({
-        title: noteTitle,
-        content: noteContent,
-        knowledge_point_id: detail?.id,
-        note_type: "student_note"
-      })
-    });
-    setBusy("");
-    setNoteContent("");
+    try {
+      await api("/api/notes", {
+        method: "POST",
+        body: JSON.stringify({
+          title: noteTitle,
+          content: noteContent,
+          knowledge_point_id: detail?.id,
+          note_type: "student_note"
+        })
+      });
+      setNoteContent("");
+    } catch (err) {
+      setNoteError(err instanceof Error ? err.message : "笔记提交失败，请检查后端是否运行。");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function ask() {
+    setQaError("");
     setBusy("qa");
-    const res = await api<{ answer: string; mode: string }>("/api/qa", {
-      method: "POST",
-      body: JSON.stringify({ knowledge_point_id: detail?.id, question })
-    });
-    setAnswer(`${res.answer}\n\n回答模式：${res.mode}`);
-    setBusy("");
+    try {
+      const res = await api<{ answer: string; mode: string }>("/api/qa", {
+        method: "POST",
+        body: JSON.stringify({ knowledge_point_id: detail?.id, question })
+      });
+      setAnswer(`${res.answer}\n\n回答模式：${res.mode}`);
+    } catch (err) {
+      setQaError(err instanceof Error ? err.message : "问答请求失败，请检查后端是否运行。");
+    } finally {
+      setBusy("");
+    }
   }
 
   return (
@@ -270,6 +284,7 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
             {busy === "note" ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
             提交审核
           </button>
+          {noteError && <p className="attemptError">{noteError}</p>}
         </div>
 
         <div className="toolPanel">
@@ -279,6 +294,7 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
             {busy === "qa" ? <Loader2 className="spin" size={18} /> : <MessageSquare size={18} />}
             提问
           </button>
+          {qaError && <p className="attemptError">{qaError}</p>}
           {answer && <div className="answer"><Markdown>{answer}</Markdown></div>}
         </div>
       </section>

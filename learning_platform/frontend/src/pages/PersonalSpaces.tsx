@@ -291,6 +291,7 @@ function PersonalPointDetail({ spaceId, point, onRefresh, onContributionCreated 
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState("");
   const [hint, setHint] = useState("");
+  const [error, setError] = useState("");
   const [showContributionForm, setShowContributionForm] = useState(false);
   const [contributionTitle, setContributionTitle] = useState("");
   const [contributionType, setContributionType] = useState("note");
@@ -298,6 +299,7 @@ function PersonalPointDetail({ spaceId, point, onRefresh, onContributionCreated 
   useEffect(() => {
     setAnswer("");
     setHint("");
+    setError("");
     setShowContributionForm(false);
     setContributionTitle(point?.title ?? "");
     setContributionType("note");
@@ -308,43 +310,61 @@ function PersonalPointDetail({ spaceId, point, onRefresh, onContributionCreated 
   }
 
   async function setProgress(status: string) {
+    setError("");
     setBusy(status);
-    await api(`/api/personal-spaces/${spaceId}/knowledge-points/${point?.id}/progress`, {
-      method: "POST",
-      body: JSON.stringify({ status })
-    });
-    await onRefresh();
-    setBusy("");
+    try {
+      await api(`/api/personal-spaces/${spaceId}/knowledge-points/${point?.id}/progress`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      });
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "状态更新失败，请检查后端是否运行。");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function ask() {
+    setError("");
     setBusy("personal-qa");
-    const res = await api<{ answer: string; mode: string }>(`/api/personal-spaces/${spaceId}/qa`, {
-      method: "POST",
-      body: JSON.stringify({ personal_knowledge_point_id: point?.id, question })
-    });
-    setAnswer(`${res.answer}\n\n回答模式：${res.mode}`);
-    setBusy("");
+    try {
+      const res = await api<{ answer: string; mode: string }>(`/api/personal-spaces/${spaceId}/qa`, {
+        method: "POST",
+        body: JSON.stringify({ personal_knowledge_point_id: point?.id, question })
+      });
+      setAnswer(`${res.answer}\n\n回答模式：${res.mode}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "问答请求失败，请检查后端是否运行。");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function submitContribution() {
+    setError("");
     setBusy("contribution");
-    const result = await api<Contribution>("/api/contributions/from-personal-point", {
-      method: "POST",
-      body: JSON.stringify({
-        space_id: spaceId,
-        personal_knowledge_point_id: point?.id,
-        contribution_type: contributionType,
-        title: contributionTitle || point?.title,
-        content_scope: "whole_point"
-      })
-    });
-    setHint(
-      `已进入审核队列，推荐合并到 ${result.recommended_code ?? ""} ${result.recommended_title ?? "待人工确认"}。${result.match_reason}`
-    );
-    setShowContributionForm(false);
-    await onContributionCreated();
-    setBusy("");
+    try {
+      const result = await api<Contribution>("/api/contributions/from-personal-point", {
+        method: "POST",
+        body: JSON.stringify({
+          space_id: spaceId,
+          personal_knowledge_point_id: point?.id,
+          contribution_type: contributionType,
+          title: contributionTitle || point?.title,
+          content_scope: "whole_point"
+        })
+      });
+      setHint(
+        `已进入审核队列，推荐合并到 ${result.recommended_code ?? ""} ${result.recommended_title ?? "待人工确认"}。${result.match_reason}`
+      );
+      setShowContributionForm(false);
+      await onContributionCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "贡献提交失败，请检查后端是否运行。");
+    } finally {
+      setBusy("");
+    }
   }
 
   return (
@@ -370,6 +390,7 @@ function PersonalPointDetail({ spaceId, point, onRefresh, onContributionCreated 
           申请贡献到公共库
         </button>
       </div>
+      {error && <p className="attemptError">{error}</p>}
       {hint && <div className="notice">{hint}</div>}
       {showContributionForm && (
         <div className="contributionForm">
