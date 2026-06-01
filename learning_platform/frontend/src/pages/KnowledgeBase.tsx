@@ -47,7 +47,7 @@ export function KnowledgeBase(props: {
   selectedId: number | null;
   detail: KnowledgePointDetail | null;
   onSelect: (id: number) => void;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
 }) {
   const chapters = useMemo(() => groupPointsByChapter(props.points), [props.points]);
   const [query, setQuery] = useState("");
@@ -126,7 +126,11 @@ export function KnowledgeBase(props: {
             <div className={courseOpen ? "treeChildren open" : "treeChildren"}>
               {query.trim() && <small className="treeMeta">找到 {visiblePointCount} 个知识点</small>}
               {filteredChapters.length === 0 && (
-                <div className="treePoint placeholder">没有匹配的知识点。</div>
+                <div className="treePoint placeholder">
+                  {props.points.length === 0 && !query.trim()
+                    ? "公共库为空，请先由管理员一键导入样例。"
+                    : "没有匹配的知识点。"}
+                </div>
               )}
               {filteredChapters.map((group) => {
                 const chapterOpen = openChapters.has(group.chapter);
@@ -157,15 +161,23 @@ export function KnowledgeBase(props: {
           </div>
         </div>
       </div>
-      <DetailPane detail={props.detail} communityUnits={communityUnits} sourceTags={sourceTags} />
+      <DetailPane
+        detail={props.detail}
+        hasPoints={props.points.length > 0}
+        communityUnits={communityUnits}
+        sourceTags={sourceTags}
+        onRefresh={props.onRefresh}
+      />
     </section>
   );
 }
 
-function DetailPane({ detail, communityUnits, sourceTags }: {
+function DetailPane({ detail, hasPoints, communityUnits, sourceTags, onRefresh }: {
   detail: KnowledgePointDetail | null;
+  hasPoints: boolean;
   communityUnits: number;
   sourceTags: string[];
+  onRefresh: () => void | Promise<void>;
 }) {
   const [question, setQuestion] = useState("这个知识点考试时最容易错在哪里？");
   const [answer, setAnswer] = useState("");
@@ -173,6 +185,7 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   const [noteContent, setNoteContent] = useState("二重极限要检查不同路径趋近时的结果是否一致，不能只看一条直线。");
   const [busy, setBusy] = useState("");
   const [noteError, setNoteError] = useState("");
+  const [noteHint, setNoteHint] = useState("");
   const [qaError, setQaError] = useState("");
 
   // Linked exercises
@@ -184,6 +197,7 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
 
   useEffect(() => {
     setAnswer("");
+    setNoteHint("");
     setExercises([]);
     setShowAnswer(new Set());
     setAttemptResult({});
@@ -200,11 +214,18 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
   }, [detail?.id]);
 
   if (!detail) {
-    return <div className="detailPane empty">请先导入样例并选择一个知识点。</div>;
+    return (
+      <div className="detailPane empty">
+        {hasPoints
+          ? "请选择一个知识点查看详情。"
+          : "公共知识库还没有内容。请切换到管理员模式，点击顶部或系统概览中的“一键导入样例”。"}
+      </div>
+    );
   }
 
   async function submitNote() {
     setNoteError("");
+    setNoteHint("");
     setBusy("note");
     try {
       await api("/api/notes", {
@@ -217,6 +238,8 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
         })
       });
       setNoteContent("");
+      setNoteHint("笔记已提交到审核中心。切换到管理员模式即可审核并合并到当前知识点。");
+      await onRefresh();
     } catch (err) {
       setNoteError(err instanceof Error ? err.message : "笔记提交失败，请检查后端是否运行。");
     } finally {
@@ -285,6 +308,7 @@ function DetailPane({ detail, communityUnits, sourceTags }: {
             提交审核
           </button>
           {noteError && <p className="attemptError">{noteError}</p>}
+          {noteHint && <p className="attemptHint">{noteHint}</p>}
         </div>
 
         <div className="toolPanel">
