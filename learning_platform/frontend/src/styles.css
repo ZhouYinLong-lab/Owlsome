@@ -240,10 +240,18 @@ p {
   margin-top: 0;
 }
 
+h1,
+h2,
+h3 {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
 h1 {
   color: var(--color-nju-purple-dark);
   font-size: 28px;
-  line-height: 1.2;
+  line-height: 1.35;
   margin-bottom: 0;
 }
 
@@ -421,6 +429,8 @@ select:focus-visible {
 .listPane,
 .detailPane {
   padding: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .compact {
@@ -556,6 +566,12 @@ select:focus-visible {
   color: var(--color-nju-purple-dark);
   text-align: left;
   padding: 8px 10px 8px 30px;
+  min-width: 0;
+}
+
+.treePoint strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .treePoint:hover,
@@ -640,6 +656,7 @@ select:focus-visible {
   color: var(--color-nju-purple);
   font-weight: 800;
   font-size: 12px;
+  flex-shrink: 0;
 }
 
 .point small {
@@ -647,9 +664,14 @@ select:focus-visible {
 }
 
 .detailHeader {
+  min-width: 0;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 12px;
   margin-bottom: 14px;
+}
+
+.detailHeader h2 {
+  max-width: 100%;
 }
 
 .breadcrumb {
@@ -660,6 +682,7 @@ select:focus-visible {
   color: var(--color-muted);
   font-size: 12px;
   font-weight: 700;
+  min-width: 0;
 }
 
 .breadcrumb span {
@@ -677,6 +700,7 @@ select:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .resourceTags em {
@@ -700,6 +724,8 @@ select:focus-visible {
   border: 1px solid var(--color-border);
   background: var(--color-surface-soft);
   overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .unit.definition {
@@ -722,20 +748,34 @@ select:focus-visible {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 10px;
+}
+
+.unitHead strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.unitHead em {
+  flex-shrink: 0;
 }
 
 .unit p,
 .answer p {
   margin-bottom: 0.7em;
+  overflow-wrap: anywhere;
 }
 
 .markdown-body {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .markdown-body table {
-  width: 100%;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
   border-collapse: collapse;
   margin: 10px 0;
 }
@@ -772,6 +812,8 @@ select:focus-visible {
 
 .markdown-inline .katex {
   font-size: 1em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .obsidian-callout {
@@ -877,6 +919,11 @@ textarea {
   background: var(--color-nju-purple-soft);
 }
 
+.answer {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
 .uploadPanel {
   padding: 16px;
 }
@@ -927,6 +974,7 @@ textarea {
 
 .personalDetail {
   padding: 16px;
+  min-width: 0;
 }
 
 .spaceHeader {
@@ -937,6 +985,10 @@ textarea {
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 14px;
   margin-bottom: 14px;
+}
+
+.spaceHeader > div:first-child {
+  min-width: 0;
 }
 
 .spaceHeader span {
@@ -1140,6 +1192,8 @@ textarea {
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .communityBadge {
@@ -1265,13 +1319,20 @@ textarea {
   padding: 14px;
   margin-bottom: 12px;
   background: var(--color-surface);
+  min-width: 0;
 }
 
 .exerciseHead {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 6px;
+}
+
+.exerciseHead strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .difficultyBadge {
@@ -1285,6 +1346,7 @@ textarea {
 .exerciseStem {
   margin-bottom: 8px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .exerciseAnswer {
@@ -1293,6 +1355,8 @@ textarea {
   background: var(--color-nju-purple-soft);
   border-radius: 6px;
   font-size: 0.92rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .exerciseActions {
