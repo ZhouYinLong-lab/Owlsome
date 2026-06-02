@@ -14,6 +14,19 @@ cd /data/workspace/projects/Owlsome
 sudo bash deployment/systemd/install_owlsome_services.sh
 ```
 
+当前校园网测试默认端口：
+
+```text
+前端：5173
+后端：37800
+```
+
+如果后端端口再次冲突，可以临时覆盖：
+
+```bash
+sudo OWLSOME_BACKEND_PORT=39000 bash deployment/systemd/install_owlsome_services.sh
+```
+
 脚本会自动完成：
 
 - 创建/复用后端 `.venv` 并安装 `requirements.txt`。
@@ -22,7 +35,7 @@ sudo bash deployment/systemd/install_owlsome_services.sh
 - 安装前端依赖并执行 `npm run build`。
 - 根据当前仓库路径、Python venv 路径和 npm 路径生成真实 systemd service。
 - 启用并重启 `owlsome-backend` 与 `owlsome-frontend`。
-- 验证 `http://127.0.0.1:8000/api/health` 和 `http://127.0.0.1:5173`。
+- 验证 `http://127.0.0.1:37800/api/health` 和 `http://127.0.0.1:5173`。
 
 更新代码后的最短流程：
 
@@ -65,7 +78,7 @@ sudo bash deployment/systemd/install_owlsome_services.sh
 
 ```bash
 # 后端健康检查
-curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:37800/api/health
 # 期望返回 {"ok":true,"service":"learning_platform"}
 
 # 前端预览检查
@@ -111,7 +124,7 @@ deactivate
 | `EnvironmentFile` | 后端 `.env` 文件的绝对路径 |
 | `ExecStart` | Python 解释器路径（后端）/ npm 路径（前端） |
 | `Environment=PATH=...` | 前端 service 中 Node/npm 的 PATH |
-| `--port` | 端口号（默认 8000 / 5173，如有冲突需修改） |
+| `--port` | 端口号（默认 37800 / 5173，如有冲突需修改） |
 
 ---
 
@@ -147,7 +160,7 @@ sudo nano /etc/systemd/system/owlsome-frontend.service
 - [ ] `ExecStart` 中的 Python venv 路径是否正确。
 - [ ] `ExecStart` 中的 npm 路径是否正确。
 - [ ] 前端 service 的 `Environment=PATH=...` 是否包含 npm/node 所在目录。
-- [ ] 端口 8000 / 5173 是否未被占用。
+- [ ] 端口 37800 / 5173 是否未被占用。
 
 ---
 
@@ -171,7 +184,7 @@ sudo systemctl start owlsome-frontend
 ```bash
 # 等待 2 秒后检查
 sleep 2
-curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:37800/api/health
 curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173
 ```
 
@@ -276,18 +289,18 @@ Nginx Proxy Manager 返回 502，说明前端或后端服务未正常运行。
 **可能原因：**
 
 1. 前端 5173 端口没起来。
-2. 后端 8000 端口没起来。
+2. 后端 37800 端口没起来。
 3. Nginx Proxy Manager 转发目标 IP:端口配置错误。
 
 **排查步骤：**
 
 ```bash
 # 1. 检查端口是否在监听
-ss -lntp | grep -E ':5173|:8000'
+ss -lntp | grep -E ':5173|:37800'
 
 # 2. 直接 curl 测试
 curl http://127.0.0.1:5173
-curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:37800/api/health
 
 # 3. 查看服务日志
 sudo journalctl -u owlsome-frontend -n 80
@@ -337,7 +350,7 @@ which python
 将输出的 Python 绝对路径替换到 `owlsome-backend.service` 的 `ExecStart` 中：
 
 ```
-ExecStart=/home/user/.local/share/pyenv/versions/3.11.0/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/home/user/.local/share/pyenv/versions/3.11.0/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 37800
 ```
 
 修改后执行：
@@ -373,7 +386,7 @@ sudo systemctl restart owlsome-backend
 ### 13.5 端口被占用
 
 ```bash
-ss -lntp | grep -E ':5173|:8000'
+ss -lntp | grep -E ':5173|:37800'
 ```
 
 如果端口已被占用，可以：

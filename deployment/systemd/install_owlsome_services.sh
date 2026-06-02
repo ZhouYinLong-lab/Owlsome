@@ -4,6 +4,8 @@ set -euo pipefail
 BACKEND_SERVICE="owlsome-backend"
 FRONTEND_SERVICE="owlsome-frontend"
 DEFAULT_PUBLIC_HOST="owlsome.lilystudio.space"
+BACKEND_PORT="${OWLSOME_BACKEND_PORT:-37800}"
+FRONTEND_PORT="${OWLSOME_FRONTEND_PORT:-5173}"
 
 log() {
   printf '\n[Owlsome] %s\n' "$1"
@@ -52,6 +54,8 @@ FRONTEND_DIR="${REPO_ROOT}/learning_platform/frontend"
 [[ -d "${FRONTEND_DIR}" ]] || die "Frontend directory not found: ${FRONTEND_DIR}"
 
 log "Using repository root: ${REPO_ROOT}"
+log "Using backend port: ${BACKEND_PORT}"
+log "Using frontend port: ${FRONTEND_PORT}"
 
 generate_token() {
   if command -v openssl >/dev/null 2>&1; then
@@ -122,7 +126,7 @@ After=network.target
 Type=simple
 WorkingDirectory=${BACKEND_DIR}
 EnvironmentFile=${BACKEND_DIR}/.env
-ExecStart=${BACKEND_PYTHON} -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=${BACKEND_PYTHON} -m uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT}
 Restart=always
 RestartSec=5
 
@@ -139,7 +143,7 @@ After=network.target
 Type=simple
 WorkingDirectory=${FRONTEND_DIR}
 Environment=PATH=${NPM_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=${NPM_BIN} run preview -- --host 0.0.0.0 --port 5173
+ExecStart=${NPM_BIN} run preview -- --host 0.0.0.0 --port ${FRONTEND_PORT}
 Restart=always
 RestartSec=5
 
@@ -156,9 +160,9 @@ systemctl restart "${FRONTEND_SERVICE}"
 
 log "Verifying local services"
 sleep 3
-curl --fail --silent --show-error http://127.0.0.1:8000/api/health
+curl --fail --silent --show-error "http://127.0.0.1:${BACKEND_PORT}/api/health"
 printf '\n'
-curl --fail --silent --show-error --output /dev/null --write-out "Frontend HTTP status: %{http_code}\n" http://127.0.0.1:5173
+curl --fail --silent --show-error --output /dev/null --write-out "Frontend HTTP status: %{http_code}\n" "http://127.0.0.1:${FRONTEND_PORT}"
 
 log "Done. Useful commands:"
 cat <<EOF
@@ -168,6 +172,6 @@ cat <<EOF
   systemctl restart ${BACKEND_SERVICE} ${FRONTEND_SERVICE}
 
 If this server is behind Nginx Proxy Manager, keep forwarding:
-  https://${DEFAULT_PUBLIC_HOST}/      -> 127.0.0.1:5173
-  https://${DEFAULT_PUBLIC_HOST}/api/  -> 127.0.0.1:8000/api/
+  https://${DEFAULT_PUBLIC_HOST}/      -> 127.0.0.1:${FRONTEND_PORT}
+  https://${DEFAULT_PUBLIC_HOST}/api/  -> 127.0.0.1:${BACKEND_PORT}/api/
 EOF

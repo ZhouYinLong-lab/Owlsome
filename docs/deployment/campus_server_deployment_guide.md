@@ -14,6 +14,31 @@
 服务器**不是**主开发环境，只做 pull + 配置 + 启动 + 验收。
 如果在服务器上跑 Claude Code，只做部署诊断和小修。
 
+## 推荐一键启动
+
+当前推荐使用 systemd 一键脚本托管前后端：
+
+```bash
+cd /data/workspace/projects/Owlsome
+git pull
+sudo bash deployment/systemd/install_owlsome_services.sh
+```
+
+脚本会自动安装依赖、构建前端、生成 systemd service、设置开机自启并验证服务。默认端口：
+
+```text
+前端：5173
+后端：37800
+```
+
+如果后端端口冲突，可以覆盖：
+
+```bash
+sudo OWLSOME_BACKEND_PORT=39000 bash deployment/systemd/install_owlsome_services.sh
+```
+
+手动启动方式保留在下文，主要用于排障。
+
 ## 推荐服务器目录
 
 ```bash
@@ -77,16 +102,16 @@ python scripts/import_calculus_full.py --import --reset-course
 ```bash
 cd ~/projects/Owlsome/learning_platform/backend
 source .venv/bin/activate
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --host 0.0.0.0 --port 37800
 ```
 
 - `--host 0.0.0.0` 允许校园网内其他设备访问。
-- 端口 8000 需要在服务器防火墙放行。
+- 端口 37800 需要在服务器防火墙或外层网关中放行；如果通过 Nginx Proxy Manager 反代，只需要让 `/api` 转发到本机 `37800`。
 
 健康检查：
 
 ```bash
-curl http://localhost:8000/api/health
+curl http://localhost:37800/api/health
 ```
 
 期望返回 `{"ok":true,"service":"learning_platform"}`。
@@ -103,14 +128,14 @@ cp .env.server.example .env.production
 编辑 `.env.production`，填入服务器实际 IP 或域名：
 
 ```env
-VITE_API_BASE_URL=http://<服务器IP或域名>:8000
+VITE_API_BASE_URL=http://<服务器IP或域名>:37800
 ```
 
 例如：
 
 ```env
-VITE_API_BASE_URL=http://10.0.1.50:8000
-VITE_API_BASE_URL=http://lilystudio.space:8000
+VITE_API_BASE_URL=http://10.0.1.50:37800
+VITE_API_BASE_URL=http://lilystudio.space:37800
 ```
 
 构建和启动：
@@ -187,7 +212,14 @@ git pull
 队友在校园网内访问：
 
 - 前端页面：`http://<服务器IP>:5173`
-- 后端 API：`http://<服务器IP>:8000`
+- 后端 API：`http://<服务器IP>:37800`
+
+如果使用 Nginx Proxy Manager 子域名反代，推荐配置：
+
+```text
+https://owlsome.lilystudio.space/      -> 192.168.6.152:5173
+https://owlsome.lilystudio.space/api/  -> 192.168.6.152:37800/api/
+```
 
 ## 管理员操作
 
@@ -207,25 +239,25 @@ git pull
 
 ```bash
 cd ~/projects/Owlsome/learning_platform/backend
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --host 0.0.0.0 --port 37800
 ```
 
 ### 端口被占用
 
 ```bash
 # 查看端口占用
-lsof -i :8000
+lsof -i :37800
 # 或
-ss -tlnp | grep 8000
+ss -tlnp | grep 37800
 
 # 终止占用进程后重试
 ```
 
 ### 前端无法连接后端
 
-1. 确认后端在运行：`curl http://localhost:8000/api/health`
+1. 确认后端在运行：`curl http://localhost:37800/api/health`
 2. 确认 `.env.production` 中 `VITE_API_BASE_URL` 配置正确。
-3. 确认服务器防火墙放行 8000 和 5173 端口。
+3. 确认服务器防火墙放行 37800 和 5173 端口。
 4. 在浏览器中打开开发者工具，查看网络请求是否 CORS 报错。
 
 ### 管理员操作返回 403
