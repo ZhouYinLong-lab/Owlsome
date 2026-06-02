@@ -5,7 +5,38 @@
 
 ---
 
-## 1. 适用场景
+## 1. 推荐一键方式
+
+在服务器仓库根目录执行：
+
+```bash
+cd /data/workspace/projects/Owlsome
+sudo bash deployment/systemd/install_owlsome_services.sh
+```
+
+脚本会自动完成：
+
+- 创建/复用后端 `.venv` 并安装 `requirements.txt`。
+- 首次部署时从 `.env.server.example` 创建后端 `.env`，并生成随机 `ADMIN_TOKEN`。
+- 首次部署时从 `.env.server.example` 创建前端 `.env.production`。
+- 安装前端依赖并执行 `npm run build`。
+- 根据当前仓库路径、Python venv 路径和 npm 路径生成真实 systemd service。
+- 启用并重启 `owlsome-backend` 与 `owlsome-frontend`。
+- 验证 `http://127.0.0.1:8000/api/health` 和 `http://127.0.0.1:5173`。
+
+更新代码后的最短流程：
+
+```bash
+cd /data/workspace/projects/Owlsome
+git pull
+sudo bash deployment/systemd/install_owlsome_services.sh
+```
+
+> 下文保留手动方式，主要用于排障、高级定制或脚本执行失败后的人工修复。
+
+---
+
+## 2. 适用场景
 
 - 校园网 / 内网服务器试部署，供队友访问测试。
 - 替代 `zellij attach` / `tmux attach` 手工挂起。
@@ -18,7 +49,7 @@
 
 ---
 
-## 2. 前置条件
+## 3. 前置条件
 
 在配置 systemd 之前，请确认以下条件全部满足：
 
@@ -44,7 +75,7 @@ curl http://127.0.0.1:5173
 
 ---
 
-## 3. 确认路径
+## 4. 确认路径
 
 本指南假定服务器部署路径为：
 
@@ -79,11 +110,12 @@ deactivate
 | `WorkingDirectory` | 项目根目录下的后端/前端子目录 |
 | `EnvironmentFile` | 后端 `.env` 文件的绝对路径 |
 | `ExecStart` | Python 解释器路径（后端）/ npm 路径（前端） |
+| `Environment=PATH=...` | 前端 service 中 Node/npm 的 PATH |
 | `--port` | 端口号（默认 8000 / 5173，如有冲突需修改） |
 
 ---
 
-## 4. 复制 service 文件
+## 5. 复制 service 文件
 
 将仓库中的模板复制到 systemd 系统目录：
 
@@ -99,7 +131,7 @@ sudo cp deployment/systemd/owlsome-frontend.service.example \
 
 ---
 
-## 5. 编辑 service 文件
+## 6. 编辑 service 文件
 
 复制后**必须**打开检查路径是否正确：
 
@@ -114,11 +146,12 @@ sudo nano /etc/systemd/system/owlsome-frontend.service
 - [ ] `EnvironmentFile` 是否指向正确的 `.env` 文件。
 - [ ] `ExecStart` 中的 Python venv 路径是否正确。
 - [ ] `ExecStart` 中的 npm 路径是否正确。
+- [ ] 前端 service 的 `Environment=PATH=...` 是否包含 npm/node 所在目录。
 - [ ] 端口 8000 / 5173 是否未被占用。
 
 ---
 
-## 6. 启动服务
+## 7. 启动服务
 
 ```bash
 # 重载 systemd 配置
@@ -146,7 +179,7 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173
 
 ---
 
-## 7. 查看状态
+## 8. 查看状态
 
 ```bash
 sudo systemctl status owlsome-backend
@@ -157,7 +190,7 @@ sudo systemctl status owlsome-frontend
 
 ---
 
-## 8. 查看日志
+## 9. 查看日志
 
 ```bash
 # 实时跟踪日志（Ctrl+C 退出）
@@ -174,7 +207,7 @@ sudo journalctl -u owlsome-backend -b
 
 ---
 
-## 9. 重启服务
+## 10. 重启服务
 
 ```bash
 sudo systemctl restart owlsome-backend
@@ -183,7 +216,7 @@ sudo systemctl restart owlsome-frontend
 
 ---
 
-## 10. 停止服务
+## 11. 停止服务
 
 ```bash
 sudo systemctl stop owlsome-backend
@@ -196,9 +229,18 @@ sudo systemctl disable owlsome-frontend
 
 ---
 
-## 11. 更新代码后的操作
+## 12. 更新代码后的操作
 
-每次 `git pull` 更新代码后，执行以下步骤：
+推荐直接重新运行一键脚本：
+
+```bash
+cd /data/workspace/projects/Owlsome
+git pull
+sudo bash deployment/systemd/install_owlsome_services.sh
+```
+
+如果需要手动更新，每次 `git pull` 更新代码后，执行以下步骤：
+
 
 ```bash
 cd /data/workspace/projects/Owlsome
@@ -225,9 +267,9 @@ sudo systemctl status owlsome-backend owlsome-frontend
 
 ---
 
-## 12. 常见问题
+## 13. 常见问题
 
-### 12.1 502 Bad Gateway
+### 13.1 502 Bad Gateway
 
 Nginx Proxy Manager 返回 502，说明前端或后端服务未正常运行。
 
@@ -255,7 +297,7 @@ sudo journalctl -u owlsome-backend -n 80
 sudo systemctl status owlsome-backend owlsome-frontend
 ```
 
-### 12.2 npm 路径不对
+### 13.2 npm 路径不对
 
 如果 systemd 日志报 `ExecStart: command not found`：
 
@@ -269,6 +311,12 @@ which npm
 ExecStart=/usr/local/bin/npm run preview -- --host 0.0.0.0 --port 5173
 ```
 
+同时确保 `Environment=PATH=...` 中包含 npm 所在目录，例如：
+
+```
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+```
+
 修改后执行：
 
 ```bash
@@ -276,7 +324,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart owlsome-frontend
 ```
 
-### 12.3 Python venv 路径不对
+### 13.3 Python venv 路径不对
 
 如果 systemd 日志报 python 找不到：
 
@@ -299,7 +347,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart owlsome-backend
 ```
 
-### 12.4 .env 不存在
+### 13.4 .env 不存在
 
 如果 `EnvironmentFile` 指向的 `.env` 文件不存在，systemd 会报错。
 
@@ -322,7 +370,7 @@ nano .env
 sudo systemctl restart owlsome-backend
 ```
 
-### 12.5 端口被占用
+### 13.5 端口被占用
 
 ```bash
 ss -lntp | grep -E ':5173|:8000'
@@ -332,7 +380,7 @@ ss -lntp | grep -E ':5173|:8000'
 - 终止占用进程后重启服务。
 - 或在 service 文件中修改 `--port` 参数（同时调整 Nginx Proxy Manager 转发目标）。
 
-### 12.6 修改前端后没生效
+### 13.6 修改前端后没生效
 
 Vite preview 是静态文件服务，修改源码后必须重新构建：
 
@@ -342,7 +390,7 @@ npm run build
 sudo systemctl restart owlsome-frontend
 ```
 
-### 12.7 服务启动后立即退出
+### 13.7 服务启动后立即退出
 
 查看退出原因：
 
@@ -358,7 +406,7 @@ sudo journalctl -u owlsome-backend -n 30
 - 端口被占用。
 - 依赖未安装（`pip install -r requirements.txt`）。
 
-### 12.8 非 root 用户运行
+### 13.8 非 root 用户运行
 
 以上示例均使用 `sudo`。如果你希望以特定用户（如 `ubuntu`）运行服务，在 `[Service]` 中添加：
 
@@ -369,7 +417,7 @@ Group=ubuntu
 
 注意该用户必须有对应目录的读取和执行权限。
 
-### 12.9 Vite preview 拒绝域名访问
+### 13.9 Vite preview 拒绝域名访问
 
 如果访问前端时看到类似错误：
 

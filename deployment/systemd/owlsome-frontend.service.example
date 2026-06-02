@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/data/workspace/projects/Owlsome/learning_platform/frontend
+Environment=PATH=/usr/bin:/usr/local/bin:/usr/sbin:/usr/local/sbin:/sbin:/bin
 ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5173
 Restart=always
 RestartSec=5
