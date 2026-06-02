@@ -17,6 +17,12 @@ import { InlineMarkdown, Markdown } from "../components/MarkdownRenderer";
 import type { Contribution, PersonalPoint, PersonalSpace, PersonalSpaceDetail, ProgressCounts } from "../types";
 import { progressLabel, unitLabel } from "../utils/labels";
 
+type FilteredSpaceItem = {
+  space: PersonalSpace;
+  detail: PersonalSpaceDetail | null;
+  points: PersonalPoint[];
+};
+
 export function PersonalSpaces(props: {
   spaces: PersonalSpace[];
   selectedSpaceId: number | null;
@@ -37,7 +43,8 @@ export function PersonalSpaces(props: {
 
   useEffect(() => {
     if (props.space) {
-      setSpaceCache((current) => ({ ...current, [props.space.id]: props.space as PersonalSpaceDetail }));
+      const currentSpace = props.space;
+      setSpaceCache((current) => ({ ...current, [currentSpace.id]: currentSpace }));
     }
   }, [props.space]);
 
@@ -68,8 +75,9 @@ export function PersonalSpaces(props: {
     };
   }, [props.spaces, query, spaceCache]);
 
-  const filteredSpaces = useMemo(() => props.spaces
-      .map((space) => {
+  const filteredSpaces = useMemo<FilteredSpaceItem[]>(() => {
+    const items = props.spaces
+      .map<FilteredSpaceItem | null>((space) => {
         const detail = spaceCache[space.id] ?? (props.selectedSpaceId === space.id ? props.space : null);
         const search = query.trim().toLowerCase();
         const spaceText = [space.title, space.source_file, space.source_type].join(" ").toLowerCase();
@@ -84,10 +92,9 @@ export function PersonalSpaces(props: {
         if (!search || spaceMatches) return { space, detail, points };
         if (matchingPoints.length > 0) return { space, detail, points: matchingPoints };
         return null;
-      })
-      .filter((item): item is { space: PersonalSpace; detail: PersonalSpaceDetail | null; points: PersonalPoint[] } => Boolean(item)),
-    [props.spaces, props.selectedSpaceId, props.space, query, spaceCache]
-  );
+      });
+    return items.filter((item): item is FilteredSpaceItem => item !== null);
+  }, [props.spaces, props.selectedSpaceId, props.space, query, spaceCache]);
 
   useEffect(() => {
     setOpenSpaces((current) => {
