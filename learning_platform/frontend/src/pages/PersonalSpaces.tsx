@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -37,6 +37,8 @@ export function PersonalSpaces(props: {
   onRefresh: () => void;
   onContributionCreated: () => void;
 }) {
+  const didInitialExpand = useRef(false);
+  const preSearchOpenSpaces = useRef<Set<number> | null>(null);
   const [openSpaces, setOpenSpaces] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
   const [spaceCache, setSpaceCache] = useState<Record<number, PersonalSpaceDetail>>({});
@@ -96,17 +98,39 @@ export function PersonalSpaces(props: {
     return items.filter((item): item is FilteredSpaceItem => item !== null);
   }, [props.spaces, props.selectedSpaceId, props.space, query, spaceCache]);
 
+  // One-time initial expand for localStorage restore or first available space
   useEffect(() => {
-    setOpenSpaces((current) => {
-      const next = new Set(current);
-      if (props.selectedSpaceId) next.add(props.selectedSpaceId);
-      if (!props.selectedSpaceId && props.spaces[0]) next.add(props.spaces[0].id);
-      if (query.trim()) {
-        for (const item of filteredSpaces) next.add(item.space.id);
+    if (!didInitialExpand.current && (props.selectedSpaceId || props.spaces[0])) {
+      didInitialExpand.current = true;
+      const targetId = props.selectedSpaceId ?? props.spaces[0]?.id;
+      if (targetId !== undefined && targetId !== null) {
+        setOpenSpaces((prev) => new Set(prev).add(targetId));
       }
-      return next;
-    });
-  }, [props.selectedSpaceId, props.spaces, filteredSpaces, query]);
+    }
+  }, [props.selectedSpaceId, props.spaces]);
+
+  // Search: auto-expand matching spaces; restore user state on clear
+  useEffect(() => {
+    const searching = query.trim().length > 0;
+    if (searching) {
+      setOpenSpaces((current) => {
+        // Save a snapshot of the user's manual state before search takes over
+        if (preSearchOpenSpaces.current === null) {
+          preSearchOpenSpaces.current = new Set(current);
+        }
+        const next = new Set(current);
+        for (const item of filteredSpaces) next.add(item.space.id);
+        return next;
+      });
+    } else if (preSearchOpenSpaces.current !== null) {
+      // Search cleared — restore the user's pre-search expand/collapse state
+      setOpenSpaces(() => {
+        const restored = preSearchOpenSpaces.current!;
+        preSearchOpenSpaces.current = null;
+        return restored;
+      });
+    }
+  }, [query, filteredSpaces]);
 
   function toggleSpace(spaceId: number) {
     setOpenSpaces((current) => {
@@ -151,8 +175,14 @@ export function PersonalSpaces(props: {
                 <button
                   className={props.selectedSpaceId === space.id ? "treeNode space selected" : "treeNode space"}
                   onClick={() => {
-                    props.onSelectSpace(space.id);
-                    toggleSpace(space.id);
+                    if (props.selectedSpaceId === space.id) {
+                      // Already selected — just toggle expand / collapse
+                      toggleSpace(space.id);
+                    } else {
+                      // Select and ensure expanded
+                      props.onSelectSpace(space.id);
+                      setOpenSpaces((prev) => new Set(prev).add(space.id));
+                    }
                   }}
                 >
                   {openSpaces.has(space.id) ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
